@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#10151d" />
+    <title>Lunar Lander · Policy Lab</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <a class="wordmark" href="./" aria-label="rl.livive.net home"><span class="mark">RL</span><span>livive<span class="muted">.net</span></span></a>
+        <nav class="topnav" aria-label="Main navigation">
+          <span class="runtime"><i></i> LUNAR LANDER / POLICY LAB</span>
+          <a href="./about.html">About</a>
+        </nav>
+      </header>
+      <section class="game" aria-label="Lunar Lander game">
+        <div class="game-head"><div><span class="live-dot"></span><span id="status">BOOTING PYTHON RUNTIME</span></div><span id="episode">EPISODE —</span></div>
+        <div class="controller-row">
+          <div class="controller-label"><span class="label">FLIGHT CONTROLLER</span><strong>Choose who flies</strong></div>
+          <div class="controller-options" role="group" aria-label="Flight controller">
+            <button class="controller active" type="button" aria-pressed="true">Human pilot <span>ACTIVE</span></button>
+            <button class="controller upcoming" type="button" disabled>Trained policy <span>UP NEXT</span></button>
+          </div>
+        </div>
+        <div class="screen-wrap">
+          <canvas id="screen" width="600" height="400" aria-label="Lunar lander simulation"></canvas>
+          <div id="overlay" class="overlay"><div class="loader"></div><p id="message">Loading Pyodide…</p></div>
+        </div>
+        <div class="telemetry">
+          <div><span class="label">ALTITUDE</span><strong id="altitude">—</strong><small>m</small></div>
+          <div><span class="label">HORIZONTAL SPEED</span><strong id="hspeed">—</strong><small>m/s</small></div>
+          <div><span class="label">VERTICAL SPEED</span><strong id="vspeed">—</strong><small>m/s</small></div>
+          <div><span class="label">REWARD</span><strong id="reward">—</strong><small>pts</small></div>
+        </div>
+        <div class="controls-row">
+          <div class="hint"><kbd>←</kbd><kbd>→</kbd> rotate <span class="sep">/</span> <kbd>↑</kbd> main engine <span class="sep">/</span> <kbd>↓</kbd> reset</div>
+          <button id="reset" type="button" disabled>RESET <span>↻</span></button>
+        </div>
+      </section>
+      <footer><span>ENVIRONMENT ONLINE <b>·</b> POLICY INTEGRATION NEXT</span><a href="./about.html">How this POC works <span aria-hidden="true">↗</span></a></footer>
+    </main>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
+    <script src="app.js" type="module"></script>
+  </body>
+</html>

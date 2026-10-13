@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#10151d" />
+    <title>About · Lunar Lander Policy Lab</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <a class="wordmark" href="./" aria-label="rl.livive.net home"><span class="mark">RL</span><span>livive<span class="muted">.net</span></span></a>
+        <nav class="topnav" aria-label="Main navigation">
+          <span class="runtime"><i></i> PROJECT NOTES</span>
+          <a href="./">Back to the lander <span aria-hidden="true">↗</span></a>
+        </nav>
+      </header>
+
+      <section class="about-intro">
+        <p class="eyebrow">ABOUT THIS POC</p>
+        <h1>Browser port: <em>the runway.</em></h1>
+        <p class="lede">The environment is playable in the browser. That clears the way for the main experiment: putting a trained reinforcement-learning policy at the controls.</p>
+      </section>
+
+      <section class="about-callout">
+        <span class="live-dot"></span>
+        <div><strong>Current milestone · environment online</strong><p>Next milestone · load a trained policy, connect its actions to the lander, and evaluate its episodes.</p></div>
+      </section>
+
+      <section class="about-grid" aria-label="Implementation notes">
+        <article class="about-card">
+          <p class="eyebrow">01 / WHY THE BROWSER</p>
+          <h2>Make the experiment easy to try.</h2>
+          <p>Pyodide runs Python in the browser, so the same environment logic can run on a static page. The goal is to make policy inference and landings visible without needing a game server.</p>
+        </article>
+        <article class="about-card">
+          <p class="eyebrow">02 / THE PHYSICS</p>
+          <h2>Python all the way down.</h2>
+          <p>PyPyBox2D supplies pure-Python rigid-body physics. A small local Gymnasium-compatible shim provides the environment and spaces interface used by LunarLander, without installing the full Gymnasium dependency tree.</p>
+        </article>
+        <article class="about-card">
+          <p class="eyebrow">03 / THE POLICY LOOP</p>
+          <h2>Observation in. Action out.</h2>
+          <p>The environment emits its eight-value observation. A trained policy will choose one of four discrete actions—coast, rotate left, fire the main engine, or rotate right—and the resulting flight can be scored episode by episode.</p>
+          <div class="action-key"><span>OBSERVATION</span><b>→</b><span>POLICY</span><b>→</b><span>ACTION</span><b>→</b><span>LANDER</span></div>
+        </article>
+        <article class="about-card">
+          <p class="eyebrow">04 / FIDELITY NOTES</p>
+          <h2>A practical browser POC.</h2>
+        <p>This implementation follows the classic LunarLander-v2 observation and reward structure, with PyPyBox2D’s older Box2D 2.1-era solver. It is not bit-for-bit identical to Gymnasium’s native Box2D 2.3 environment. Pyodide handles Python and NumPy; JavaScript draws the canvas and forwards keyboard input.</p>
+        <p class="credit">Physics engine: <a href="https://code.google.com/archive/p/pybox2d/" target="_blank" rel="noreferrer">PyPyBox2D</a> by Ken Lauer, from the <a href="https://pypi.org/project/pypybox2d/2.1-r331/" target="_blank" rel="noreferrer">2.1-r331 PyPI source release</a>. Distributed under the zlib license; the license notice is included in the wheel.</p>
+        </article>
+      </section>
+
+      <section class="sources">
+        <p class="eyebrow">REFERENCES</p>
+        <a href="https://github.com/Farama-Foundation/Gymnasium/blob/v0.26.3/gymnasium/envs/box2d/lunar_lander.py" target="_blank" rel="noreferrer">Gymnasium LunarLander source <span aria-hidden="true">↗</span></a>
+        <a href="https://github.com/pybox2d/pybox2d" target="_blank" rel="noreferrer">PyBox2D / PyPyBox2D project <span aria-hidden="true">↗</span></a>
+      </section>
+
+      <footer><span>LUNARLANDER-V2 · POLICY LAB</span><a href="./">Return to flight <span aria-hidden="true">↗</span></a></footer>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,3 @@
+numpy>=1.24,<3
+pygame>=2.5,<3
+./third_party/wheels/pypybox2d-2.1.post331-py3-none-any.whl
