@@ -382,8 +382,41 @@ a { color: var(--gold); }
 }
 .hs-rank { color: var(--gold); }
 .hs-pts { color: var(--amber); }
-.attract-demo { grid-area: demo; }
-.attract-demo canvas { width: 100%; border: 2px solid var(--line); background: var(--void); }
+.attract-demo { grid-area: demo; position: relative; }
+.attract-demo canvas { display: block; width: 100%; border: 2px solid var(--line); background: var(--void); image-rendering: pixelated; }
+.attract-demo-badge,
+.attract-demo-pilot,
+.attract-demo-press {
+  position: absolute;
+  font-family: var(--display);
+  letter-spacing: 1px;
+  pointer-events: none;
+  user-select: none;
+}
+.attract-demo-badge {
+  top: 10px;
+  left: 10px;
+  font-size: var(--type-caption);
+  color: var(--void);
+  background: var(--gold);
+  border: 2px solid var(--amber);
+  padding: 4px 8px;
+}
+.attract-demo-pilot {
+  bottom: 10px;
+  left: 10px;
+  font-size: var(--type-caption);
+  color: var(--gold);
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
+}
+.attract-demo-press {
+  bottom: 10px;
+  right: 10px;
+  font-size: var(--type-caption);
+  color: var(--amber);
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
+  animation: blink 1.1s steps(2) infinite;
+}
 
 /* ------------------------------------------------------------------- menu */
 .center-screen { max-width: 560px; margin: 0 auto; }

@@ -1853,24 +1853,98 @@ function defaultModelFor(slot, mode) {
 let cabinetMode = "versus";
 
 /* ============================================================================
- * ATTRACT ANIMATION
+ * ATTRACT DEMO — the cabinet flying the real physics/AI sim by itself
  * ==========================================================================*/
-function attractFrame(now) {
-  const canvas = $("attract-canvas"); if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-  const w = canvas.width, h = canvas.height;
-  ctx.clearRect(0, 0, w, h);
-  ctx.fillStyle = "#0A0B10"; ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = "#3a4658";
-  for (let i = 0; i < 40; i++) { const x = (i * 137 + 11) % w, y = (i * 71 + 5) % (h * 0.7); ctx.fillRect(x, y, 1, 1); }
-  ctx.strokeStyle = "#C7F36B"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(w * 0.28, h * 0.78); ctx.lineTo(w * 0.64, h * 0.78); ctx.stroke();
-  const t = now / 1000;
-  const x = w / 2 + Math.sin(t * 0.5) * w * 0.22;
-  const y = h * 0.3 + Math.abs(Math.sin(t * 0.8)) * h * 0.2;
-  ctx.save(); ctx.translate(x, y); ctx.rotate(Math.sin(t) * 0.3);
-  ctx.fillStyle = "#31E0F0"; ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(7, 6); ctx.lineTo(-7, 6); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "#FF9D5C"; ctx.beginPath(); ctx.moveTo(-3, 6); ctx.lineTo(0, 12 + Math.abs(Math.sin(t * 12)) * 5); ctx.lineTo(3, 6); ctx.fill();
-  ctx.restore();
+const attractCanvas = $("attract-canvas");
+const attractCtx = attractCanvas ? attractCanvas.getContext("2d") : null;
+const ATTRACT_RESTART_DELAY_MS = 1800;
+const ATTRACT_RETRY_DELAY_MS = 6000;
+const ATTRACT_LANDER_COLOR = PILOT_COLORS[0];
+const attractDemo = {
+  running: false, busy: false,
+  state: null, prevObservation: null, action: 0, episode: 0,
+  accumulator: 0, restartAt: 0, pilotId: "ppo",
+};
+
+/* Contenders cycle each episode; the first-party PPO always leads the reel. */
+function attractReel() {
+  const ids = catalog.map((m) => m.id).filter((id) => modelEntry(id));
+  const reel = ["ppo", ...ids.filter((id) => id !== "ppo")];
+  return reel.filter((id) => modelEntry(id));
+}
+function attractPilotForEpisode() {
+  const reel = attractReel();
+  if (!reel.length) return "ppo";
+  return reel[attractDemo.episode % reel.length];
+}
+function updateAttractDemoHud() {
+  const el = $("attract-demo-pilot");
+  if (!el) return;
+  const entry = modelEntry(attractDemo.pilotId);
+  const label = entry ? (entry.algorithm || entry.label) : attractDemo.pilotId;
+  el.textContent = `ATTRACT MODE · ${label}`;
+}
+async function attractStartEpisode() {
+  if (!simReady || attractDemo.busy) return;
+  attractDemo.busy = true;
+  try {
+    attractDemo.pilotId = attractPilotForEpisode();
+    attractDemo.episode += 1;
+    attractDemo.state = readPythonJson("reset_json()");
+    attractDemo.prevObservation = Array.from(attractDemo.state.observation);
+    attractDemo.action = 0;
+    attractDemo.accumulator = 0;
+    attractDemo.restartAt = 0;
+    updateAttractDemoHud();
+    drawScene(attractCanvas, attractCtx, attractDemo.state, attractDemo.action, ATTRACT_LANDER_COLOR);
+    // Load the episode's pilot (first-party PPO on the first pass) before it flies.
+    await ensureModelSession(attractDemo.pilotId);
+    attractDemo.running = true;
+  } catch (err) {
+    // Attract mode must never surface an error; keep the parked scene and retry later.
+    attractDemo.running = false;
+    attractDemo.restartAt = performance.now() + ATTRACT_RETRY_DELAY_MS;
+    console.warn("attract demo unavailable", err);
+  } finally {
+    attractDemo.busy = false;
+  }
+}
+async function attractDemoFrame(elapsedMs) {
+  if (currentScreenName !== "attract" || !simReady || attractDemo.busy) return;
+  if (!attractDemo.running) {
+    if (attractDemo.restartAt && performance.now() < attractDemo.restartAt) return;
+    await attractStartEpisode();
+    return;
+  }
+  attractDemo.accumulator = Math.min(attractDemo.accumulator + elapsedMs, STEP_INTERVAL_MS * MAX_CATCH_UP_STEPS);
+  if (attractDemo.accumulator < STEP_INTERVAL_MS) return;
+  attractDemo.busy = true;
+  try {
+    let steps = 0;
+    while (steps < MAX_CATCH_UP_STEPS && attractDemo.running && attractDemo.accumulator >= STEP_INTERVAL_MS) {
+      const action = (await chooseModelActions(attractDemo.pilotId, [attractDemo.prevObservation]))[0];
+      if (currentScreenName !== "attract") { attractDemo.running = false; break; }
+      const before = Array.from(attractDemo.state.observation);
+      attractDemo.action = action;
+      const result = readPythonJson(`step_json(${action})`);
+      attractDemo.prevObservation = before;
+      attractDemo.state = result.state;
+      attractDemo.accumulator = Math.max(0, attractDemo.accumulator - STEP_INTERVAL_MS);
+      steps += 1;
+      if (result.terminated || result.truncated) {
+        attractDemo.running = false;
+        attractDemo.restartAt = performance.now() + ATTRACT_RESTART_DELAY_MS;
+        break;
+      }
+    }
+    drawScene(attractCanvas, attractCtx, attractDemo.state, attractDemo.action, ATTRACT_LANDER_COLOR);
+  } catch (err) {
+    attractDemo.running = false;
+    attractDemo.restartAt = performance.now() + ATTRACT_RETRY_DELAY_MS;
+    console.warn("attract demo fault", err);
+  } finally {
+    attractDemo.busy = false;
+  }
 }
 
 /* ============================================================================
@@ -1888,7 +1962,7 @@ function frame(now) {
   updateConfetti(elapsed / 1000);
 
   if (currentScreenName === "attract") {
-    attractFrame(now);
+    attractDemoFrame(elapsed);
     if (now - attractTaglineAt > 3000) {
       attractTaglineAt = now;
       attractTaglineIdx = (attractTaglineIdx + 1) % TAGLINES.attract.length;
@@ -1962,6 +2036,7 @@ window.addEventListener("blur", () => pressed.clear());
  * BOOT / WIRING
  * ==========================================================================*/
 let pyodide = null;
+let simReady = false;
 function readPythonJson(expression) { return JSON.parse(pyodide.runPython(expression)); }
 
 async function installWheel(url) {
@@ -2056,6 +2131,7 @@ async function boot() {
     const appWheel = new URL("./packages/lunarlander_gym_shim-0.1.0-py3-none-any.whl", window.location.href);
     await installWheel(appWheel.href);
     await pyodide.runPythonAsync(PY_SETUP);
+    simReady = true;
     solo.state = readPythonJson("reset_json()");
     solo.totalReward = 0;
     updateSoloTelemetry();
