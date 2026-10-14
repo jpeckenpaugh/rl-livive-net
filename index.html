@@ -6,12 +6,8 @@
     <meta name="theme-color" content="#0A0B10" />
     <title>Lunar Lander — Tournament Edition</title>
     <link rel="icon" href="./favicon.ico" sizes="any" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap"
-      rel="stylesheet"
-    />
+    <link rel="preload" href="assets/fonts/press-start-2p-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="assets/fonts/vt323-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -42,7 +38,8 @@
         </button>
       </header>
 
-      <main class="cabinet-screen" id="cabinet-screen">
+      <div class="cabinet-stage">
+        <main class="cabinet-screen" id="cabinet-screen">
         <p id="cabinet-status" class="sr-status" role="status" aria-live="polite"></p>
 
         <!-- ============================= BOOT ============================= -->
@@ -75,7 +72,10 @@
             <ol class="highscore-list" id="highscore-list" aria-label="High scores"></ol>
           </div>
           <div class="attract-demo" aria-hidden="true">
-            <canvas id="attract-canvas" width="300" height="200"></canvas>
+            <canvas id="attract-canvas" width="600" height="400"></canvas>
+            <span class="attract-demo-badge">DEMO</span>
+            <span class="attract-demo-pilot" id="attract-demo-pilot">ATTRACT MODE</span>
+            <span class="attract-demo-press">PRESS START</span>
           </div>
         </section>
 
@@ -375,7 +375,8 @@
             </div>
           </details>
         </section>
-      </main>
+        </main>
+      </div>
 
       <footer class="cabinet-coin-door">
         <span>INSERT COIN · CREDIT 01</span>
