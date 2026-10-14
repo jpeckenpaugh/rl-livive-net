@@ -793,8 +793,12 @@ function showScreen(name) {
   currentScreenName = name;
   Sound.setTrack(SCREEN_TRACKS[name] || name);
   if (name !== "match" && name !== "solo") stopRunning();
-  // Leaving Solo Flight halts its loop, so the power button is a real exit.
-  if (name !== "solo" && solo.running) { solo.running = false; solo.autoReset = null; }
+  // Leaving Solo Flight halts its loop and closes any Flight Over pop-up, so
+  // the power button is a real exit.
+  if (name !== "solo") {
+    if (solo.running) { solo.running = false; solo.autoReset = null; }
+    hideSoloResult();
+  }
   if (!["match", "attract", "win"].includes(name)) stopConfetti();
   showMatchBanner(false);
   resetMenuFocus();
@@ -1106,6 +1110,7 @@ const solo = {
   prevObservation: null, stepIndex: 0, autoReset: null, speed: 1,
   accumulator: 0, resetRequested: false,
   modelId: null, pendingMode: null,
+  session: { flights: 0, bestScore: 0, bestTime: 0 },
 };
 const soloCanvas = $("solo-canvas");
 const soloCtx = soloCanvas ? soloCanvas.getContext("2d") : null;
@@ -1139,6 +1144,92 @@ function soloModeLabel(mode = solo.controllerMode) {
 function updateSoloPilotChip() {
   const chip = $("solo-pilot-chip"); if (chip) chip.textContent = soloModeLabel();
 }
+function recordSoloSession(score, flightTime) {
+  const s = solo.session;
+  s.flights += 1;
+  if (score > s.bestScore) s.bestScore = score;
+  if (flightTime > s.bestTime) s.bestTime = flightTime;
+}
+function boardBest(list) {
+  const rows = loadBoards()[list] || [];
+  if (!rows.length) return 0;
+  return rows.reduce((m, r) => Math.max(m, Number(r.value) || 0), 0);
+}
+function resultStatTiles(terminal, flightTime) {
+  const s = solo.session;
+  return [
+    { label: "THIS FLIGHT", value: Math.round(solo.totalReward), unit: "pts" },
+    { label: "FLIGHT TIME", value: flightTime.toFixed(1), unit: "s" },
+    { label: "SESSION BEST", value: Math.round(s.bestScore), unit: "pts" },
+    { label: "SESSION FLIGHTS", value: s.flights, unit: "" },
+    { label: "CABINET HIGH", value: Math.round(boardBest("records")), unit: "pts" },
+    { label: "BEST TIME", value: boardBest("flights").toFixed(0), unit: "s" },
+  ];
+}
+function renderResultStats(terminal, flightTime) {
+  const box = $("result-stats"); if (!box) return;
+  box.replaceChildren(...resultStatTiles(terminal, flightTime).map((tile) => {
+    const el = document.createElement("div");
+    el.className = "result-stat";
+    const label = document.createElement("span"); label.textContent = tile.label;
+    const value = document.createElement("strong"); value.textContent = String(tile.value);
+    el.append(label, value);
+    if (tile.unit) { const unit = document.createElement("small"); unit.textContent = tile.unit; el.append(unit); }
+    return el;
+  }));
+}
+function updateAudioToggles() {
+  document.querySelectorAll(".opt-toggle").forEach((btn) => {
+    const on = btn.dataset.audio === "sfx" ? Sound.isSfxOn()
+      : btn.dataset.audio === "music" ? Sound.isOn()
+      : Sound.isVoicesOn();
+    btn.classList.toggle("on", on);
+    btn.setAttribute("aria-pressed", String(on));
+  });
+}
+function showSoloResult(terminal, flightTime) {
+  const panel = $("solo-result"); if (!panel) return;
+  const landed = terminal.terminated && terminal.reward >= 0;
+  const outcome = !terminal.terminated ? "TIME'S UP" : (landed ? "TOUCHDOWN" : "CRASHED");
+  const outcomeEl = $("result-outcome"); if (outcomeEl) outcomeEl.textContent = outcome;
+  const scoreEl = $("result-score");
+  if (scoreEl) scoreEl.textContent = `${Math.round(solo.totalReward)} pts · ${flightTime.toFixed(1)}s`;
+  renderResultStats(terminal, flightTime);
+  const options = $("result-options-panel"); if (options) options.hidden = true;
+  const pilotBtn = $("result-change-pilot");
+  if (pilotBtn) pilotBtn.hidden = solo.controllerMode === "human";
+  updateAudioToggles();
+  soloStatus("FLIGHT OVER");
+  panel.hidden = false;
+  resultFocusIndex = 0;
+  setResultFocus();
+}
+function hideSoloResult() {
+  const panel = $("solo-result"); if (panel) panel.hidden = true;
+  const options = $("result-options-panel"); if (options) options.hidden = true;
+}
+function resultItems() {
+  const panel = $("solo-result");
+  if (!panel || panel.hidden) return [];
+  return Array.from(panel.querySelectorAll("button")).filter((el) => !el.hidden && !el.closest("[hidden]"));
+}
+let resultFocusIndex = 0;
+function setResultFocus() {
+  const items = resultItems();
+  if (!items.length) return;
+  resultFocusIndex = clamp(resultFocusIndex, 0, items.length - 1);
+  document.querySelectorAll(".kbd-focus").forEach((el) => el.classList.remove("kbd-focus"));
+  const el = items[resultFocusIndex];
+  el.classList.add("kbd-focus");
+  try { el.focus({ preventScroll: true }); } catch (err) { el.focus(); }
+}
+function moveResultFocus(delta) {
+  const items = resultItems();
+  if (!items.length) return;
+  resultFocusIndex = ((resultFocusIndex + delta) % items.length + items.length) % items.length;
+  setResultFocus();
+}
+function soloResultVisible() { const p = $("solo-result"); return !!p && !p.hidden; }
 function humanSoloAction() {
   if (pressed.has("ArrowUp")) return 2;
   if (pressed.has("ArrowLeft")) return 1;
@@ -1195,6 +1286,7 @@ async function enterSolo(mode) {
   solo.pendingMode = mode;
   solo.controllerMode = null;
   solo.episode = 0;
+  hideSoloResult();
   showScreen("solo");
   updateSoloPilotChip();
   soloStatus(mode === "human" ? "ROLLING OUT THE LANDER" : "LOADING PILOT");
@@ -1239,6 +1331,7 @@ async function resetSoloEpisode() {
   finally { solo.busy = false; }
 }
 function requestSoloReset() {
+  hideSoloResult();
   if (solo.busy) { solo.resetRequested = true; solo.running = false; return; }
   resetSoloEpisode();
 }
@@ -1287,20 +1380,11 @@ async function soloFrame(elapsedMs) {
     if (terminal) {
       solo.accumulator = 0;
       if (terminal.terminated && terminal.reward >= 0) Sound.sfx("land"); else Sound.sfx("crash");
-      if (solo.controllerMode === "policy") {
-        solo.autoReset = 2.0;
-        soloStatus(`NEXT FLIGHT IN ${solo.autoReset.toFixed(1)}s`);
-      } else {
-        soloStatus(terminal.terminated ? "FLIGHT COMPLETE" : "TIME'S UP");
-        soloOverlay(`Flight over · ${solo.totalReward.toFixed(1)} points · reset to fly again`);
-      }
-      const rb = $("solo-reset"); if (rb) rb.disabled = false;
+      const flightTime = solo.stepIndex * STEP_INTERVAL_MS / 1000;
       const pilotName = solo.controllerMode === "human" ? "YOU" : (modelLabel(soloModelId()) || "AI");
-      addLeaderboardEntry({
-        name: pilotName,
-        value: solo.totalReward,
-        flight: solo.stepIndex * STEP_INTERVAL_MS / 1000,
-      });
+      addLeaderboardEntry({ name: pilotName, value: solo.totalReward, flight: flightTime });
+      recordSoloSession(solo.totalReward, flightTime);
+      showSoloResult(terminal, flightTime);
     }
   } catch (err) { soloFault(err); }
   finally {
@@ -2595,7 +2679,41 @@ function wireEvents() {
   document.querySelectorAll("[data-solo-mode]").forEach((btn) => {
     btn.addEventListener("click", () => { Sound.sfx("select"); openSoloMode(btn.dataset.soloMode); });
   });
+  const resultNext = $("result-next");
+  if (resultNext) resultNext.addEventListener("click", () => { Sound.sfx("coin"); hideSoloResult(); requestSoloReset(); });
+  const resultOptions = $("result-options");
+  if (resultOptions) resultOptions.addEventListener("click", () => {
+    Sound.sfx("menu");
+    const panel = $("result-options-panel");
+    if (panel) panel.hidden = !panel.hidden;
+    updateAudioToggles();
+    resultFocusIndex = 0;
+  });
+  const resultTitle = $("result-title");
+  if (resultTitle) resultTitle.addEventListener("click", () => { Sound.sfx("menu"); hideSoloResult(); showScreen("attract"); });
+  const resultChangeMode = $("result-change-mode");
+  if (resultChangeMode) resultChangeMode.addEventListener("click", () => { Sound.sfx("menu"); hideSoloResult(); showScreen("solomode"); });
+  const resultChangePilot = $("result-change-pilot");
+  if (resultChangePilot) resultChangePilot.addEventListener("click", () => { Sound.sfx("menu"); hideSoloResult(); renderPilotCards(); showScreen("pilotselect"); });
+  document.querySelectorAll(".opt-toggle").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (btn.dataset.audio === "sfx") Sound.toggleSfx();
+      else if (btn.dataset.audio === "music") Sound.toggleMusic();
+      else { const on = Sound.toggleVoices(); if (!on) Commentary.stop(); }
+      updateAudioToggles();
+    });
+  });
   window.addEventListener("keydown", (e) => {
+    if (currentScreenName === "solo" && soloResultVisible()) {
+      if (e.code === "ArrowUp") { e.preventDefault(); moveResultFocus(-1); return; }
+      if (e.code === "ArrowDown") { e.preventDefault(); moveResultFocus(1); return; }
+      if (e.code === "Enter" || e.code === "Space") {
+        e.preventDefault();
+        const items = resultItems();
+        if (items[resultFocusIndex]) items[resultFocusIndex].click();
+        return;
+      }
+    }
     if (e.code === "ArrowDown" && currentScreenName === "solo") { e.preventDefault(); requestSoloReset(); return; }
     if (currentScreenName === "win" && (e.code === "Enter" || e.code === "Space")) { e.preventDefault(); advanceFromWin(); return; }
     if (currentScreenName === "match" && match && match.phase === "roundComplete" && (e.code === "Enter" || e.code === "Space")) { e.preventDefault(); continueAfterRound(); return; }

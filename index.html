@@ -141,17 +141,38 @@
             <canvas id="solo-canvas" width="600" height="400" aria-label="Lunar lander simulation"></canvas>
             <div id="solo-overlay" class="overlay solo-overlay"><div class="loader"></div><p id="solo-message">Rolling out the pilots…</p></div>
             <div class="solo-hud">
-              <div class="hud-top">
-                <div class="hud-readings">
-                  <div class="hud-read"><span>ALTITUDE</span><strong id="altitude">—</strong><small>m</small></div>
-                  <div class="hud-read"><span>HORIZONTAL SPEED</span><strong id="hspeed">—</strong><small>m/s</small></div>
-                  <div class="hud-read"><span>VERTICAL SPEED</span><strong id="vspeed">—</strong><small>m/s</small></div>
-                  <div class="hud-read"><span>FLIGHT TIME</span><strong id="flight-time">—</strong><small>s</small></div>
-                  <div class="hud-read"><span>SCORE</span><strong id="reward">—</strong><small>pts</small></div>
-                </div>
-                <span id="solo-pilot-chip" class="hud-chip">HUMAN PILOT</span>
-              </div>
               <span id="solo-status" class="hud-status" aria-live="polite">WARMING UP THE CABINET</span>
+              <span id="solo-pilot-chip" class="hud-chip">HUMAN PILOT</span>
+              <div class="hud-readings">
+                <div class="hud-read"><span>ALTITUDE</span><strong id="altitude">—</strong><small>m</small></div>
+                <div class="hud-read"><span>HORIZONTAL SPEED</span><strong id="hspeed">—</strong><small>m/s</small></div>
+                <div class="hud-read"><span>VERTICAL SPEED</span><strong id="vspeed">—</strong><small>m/s</small></div>
+                <div class="hud-read"><span>FLIGHT TIME</span><strong id="flight-time">—</strong><small>s</small></div>
+                <div class="hud-read"><span>SCORE</span><strong id="reward">—</strong><small>pts</small></div>
+              </div>
+            </div>
+            <div id="solo-result" class="solo-result" hidden>
+              <div class="result-panel" role="dialog" aria-modal="true" aria-labelledby="result-outcome">
+                <p class="result-outcome" id="result-outcome">FLIGHT OVER</p>
+                <p class="result-score" id="result-score">0 pts</p>
+                <div class="result-stats" id="result-stats"></div>
+                <div class="result-menu" id="result-menu">
+                  <button id="result-next" class="cab-btn cab-btn-primary" type="button"><b>NEXT FLIGHT</b></button>
+                  <button id="result-options" class="cab-btn" type="button"><b>OPTIONS</b></button>
+                  <button id="result-title" class="cab-btn" type="button"><b>RETURN TO TITLE</b></button>
+                </div>
+                <div class="result-options-panel" id="result-options-panel" hidden>
+                  <div class="result-audio">
+                    <button class="opt-toggle" data-audio="sfx" type="button">SFX</button>
+                    <button class="opt-toggle" data-audio="music" type="button">MUSIC</button>
+                    <button class="opt-toggle" data-audio="voice" type="button">VOICE</button>
+                  </div>
+                  <div class="result-menu">
+                    <button id="result-change-mode" class="cab-btn" type="button"><b>CHANGE MODE</b></button>
+                    <button id="result-change-pilot" class="cab-btn" type="button"><b>CHANGE PILOT</b></button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
