@@ -1,0 +1,37 @@
+{
+  "valid": {
+    "inputNames": ["observation"],
+    "outputNames": ["logits"],
+    "inputShape": ["batch", 8],
+    "outputShape": ["batch", 4]
+  },
+  "wrongInput": {
+    "inputNames": ["obs"],
+    "outputNames": ["logits"],
+    "inputShape": ["batch", 8],
+    "outputShape": ["batch", 4]
+  },
+  "wrongOutput": {
+    "inputNames": ["observation"],
+    "outputNames": ["actions"],
+    "inputShape": ["batch", 8],
+    "outputShape": ["batch", 4]
+  },
+  "wrongInputShape": {
+    "inputNames": ["observation"],
+    "outputNames": ["logits"],
+    "inputShape": ["batch", 4],
+    "outputShape": ["batch", 4]
+  },
+  "wrongOutputShape": {
+    "inputNames": ["observation"],
+    "outputNames": ["logits"],
+    "inputShape": ["batch", 8],
+    "outputShape": ["batch", 2]
+  },
+  "histogram": {
+    "logits": [0.1, 0.2, 0.9, 0.3, 5.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+    "count": 3,
+    "expected": [2, 0, 1, 0]
+  }
+}

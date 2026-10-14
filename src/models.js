@@ -18,10 +18,12 @@ export async function loadCatalog() {
     if (res.ok) manifest = await res.json();
   } catch (err) { console.warn("manifest unavailable", err); }
   const entries = manifest && Array.isArray(manifest.models) && manifest.models.length ? manifest.models : data.modelFallback;
-  state.catalog = entries.filter((m) => m && m.id && m.url).map((m) => ({
+  // Bundled pilots carry a `url`; custom pilots merged in later carry `bytes`.
+  state.catalog = entries.filter((m) => m && m.id && (m.url || m.bytes)).map((m) => ({
     id: String(m.id),
     label: String(m.label || m.id),
-    url: new URL(m.url, document.baseURI).href,
+    url: m.url ? new URL(m.url, document.baseURI).href : "",
+    bytes: m.bytes || null,
     author: m.author ? String(m.author) : "",
     algorithm: m.algorithm ? String(m.algorithm) : "",
     role: m.role ? String(m.role) : "",
@@ -34,11 +36,7 @@ export async function ensureModelSession(modelId) {
   const entry = modelEntry(modelId);
   if (!entry) throw new Error(`Unknown AI model: ${modelId}`);
   const loading = (async () => {
-    await loadOnnxRuntime();
-    const ort = globalThis.ort;
-    ort.env.wasm.wasmPaths = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ONNX_RUNTIME_VERSION}/dist/`;
-    ort.env.wasm.numThreads = 1;
-    const session = await ort.InferenceSession.create(entry.url, { executionProviders: ["wasm"], graphOptimizationLevel: "all" });
+    const session = await createSession(entry.bytes || entry.url);
     if (!session.inputNames.includes("observation") || !session.outputNames.includes("logits")) {
       session.release();
       throw new Error(`${entry.label}: unexpected ONNX input or output name`);
@@ -49,6 +47,27 @@ export async function ensureModelSession(modelId) {
   modelLoading.set(modelId, loading);
   return loading;
 }
+/* Create an ONNX session from bytes or a URL, with the cabinet's runtime
+ * settings. Used for bundled pilots (url) and in-memory custom pilots (bytes). */
+async function createSession(source) {
+  await loadOnnxRuntime();
+  const ort = globalThis.ort;
+  ort.env.wasm.wasmPaths = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ONNX_RUNTIME_VERSION}/dist/`;
+  ort.env.wasm.numThreads = 1;
+  return ort.InferenceSession.create(source, { executionProviders: ["wasm"], graphOptimizationLevel: "all" });
+}
+
+/* Validate an uploaded ONNX model in memory. Mirrors ensureModelSession's
+ * input/output name check and error message; the caller does shape checks. */
+export async function createMemorySession(bytes) {
+  const session = await createSession(bytes);
+  if (!session.inputNames.includes("observation") || !session.outputNames.includes("logits")) {
+    session.release();
+    throw new Error("unexpected ONNX input or output name");
+  }
+  return session;
+}
+
 export function loadOnnxRuntime() {
   if (globalThis.ort) return Promise.resolve(globalThis.ort);
   if (onnxRuntimeLoading) return onnxRuntimeLoading;
