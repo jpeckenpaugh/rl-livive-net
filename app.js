@@ -2,6 +2,9 @@ const PYODIDE_VERSION = "0.23.4";
 const ONNX_RUNTIME_VERSION = "1.19.2";
 const POLICY_MODEL_URL = new URL("./models/ppo-LunarLander-v2.onnx", import.meta.url);
 const FPS = 50;
+const STEP_INTERVAL_MS = 1000 / FPS;
+const MAX_CATCH_UP_STEPS = 4;
+const MAX_FRAME_ELAPSED_MS = 100;
 const SCALE = 30;
 const VIEWPORT_HALF_H = 400 / SCALE / 2;
 const $ = (id) => document.getElementById(id);
@@ -19,7 +22,9 @@ let controllerRequest = 0;
 let policySession = null;
 let policyLoading = null;
 let onnxRuntimeLoading = null;
-let lastStep = 0;
+let simulationSpeed = 1;
+let lastFrameTime = 0;
+let stepAccumulator = 0;
 const pressed = new Set();
 
 function status(message) { $("status").textContent = message; }
@@ -237,6 +242,7 @@ async function resetEpisode() {
   busy = true; running = false;
   try {
     state = readPythonJson("reset_json()");
+    stepAccumulator = 0;
     totalReward = 0; episode++;
     $("episode").textContent = `EPISODE ${String(episode).padStart(2, "0")}`;
     updateTelemetry(); draw(); status("READY · ENVIRONMENT RUNNING"); hideOverlay();
@@ -251,22 +257,44 @@ function showError(error) {
 }
 async function frame(now) {
   requestAnimationFrame(frame);
-  if (!running || busy || now - lastStep < 1000 / FPS) return;
-  lastStep = now; busy = true;
+  const elapsed = lastFrameTime === 0 ? 0 : Math.min(now - lastFrameTime, MAX_FRAME_ELAPSED_MS);
+  lastFrameTime = now;
+  if (!running) {
+    stepAccumulator = 0;
+    return;
+  }
+  stepAccumulator = Math.min(
+    stepAccumulator + elapsed * simulationSpeed,
+    STEP_INTERVAL_MS * MAX_CATCH_UP_STEPS,
+  );
+  if (busy) return;
+  if (stepAccumulator < STEP_INTERVAL_MS) return;
+  busy = true;
+  let terminalResult = null;
   try {
-    if (controllerMode === "override") {
-      const aiAction = await choosePolicyAction(state.observation);
-      const humanAction = humanOverrideAction();
-      action = humanAction === null ? aiAction : humanAction;
-    } else if (controllerMode === "policy") {
-      action = await choosePolicyAction(state.observation);
+    let stepsRun = 0;
+    while (stepsRun < MAX_CATCH_UP_STEPS && running && stepAccumulator >= STEP_INTERVAL_MS) {
+      if (controllerMode === "override") {
+        const aiAction = await choosePolicyAction(state.observation);
+        const humanAction = humanOverrideAction();
+        action = humanAction === null ? aiAction : humanAction;
+      } else if (controllerMode === "policy") {
+        action = await choosePolicyAction(state.observation);
+      }
+      const result = readPythonJson(`step_json(${action})`);
+      state = result.state;
+      totalReward += result.reward;
+      stepAccumulator = Math.max(0, stepAccumulator - STEP_INTERVAL_MS);
+      stepsRun++;
+      if (result.terminated || result.truncated) {
+        running = false;
+        terminalResult = result;
+      }
     }
-    const result = readPythonJson(`step_json(${action})`);
-    state = result.state; totalReward += result.reward;
     updateTelemetry(); draw();
-    if (result.terminated || result.truncated) {
-      running = false;
-      status(result.terminated ? "EPISODE COMPLETE" : "TIME LIMIT REACHED");
+    if (terminalResult) {
+      stepAccumulator = 0;
+      status(terminalResult.terminated ? "EPISODE COMPLETE" : "TIME LIMIT REACHED");
       overlay(`Episode ended · ${totalReward.toFixed(1)} points · reset to fly again`);
       $("reset").disabled = false;
     }
@@ -304,6 +332,10 @@ $("reset").addEventListener("click", resetEpisode);
 $("human-controller").addEventListener("click", () => chooseController("human"));
 $("policy-controller").addEventListener("click", () => chooseController("policy"));
 $("override-controller").addEventListener("click", () => chooseController("override"));
+$("time-scale").addEventListener("change", (event) => {
+  simulationSpeed = Number(event.currentTarget.value);
+  stepAccumulator = 0;
+});
 updateControllerButtons();
 
 async function start() {
