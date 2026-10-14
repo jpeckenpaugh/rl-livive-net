@@ -2,160 +2,304 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#10151d" />
-    <title>Lunar Lander — Four-Pilot Cabinet</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0A0B10" />
+    <title>Lunar Lander — Tournament Edition</title>
     <link rel="icon" href="./favicon.ico" sizes="any" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <main class="shell">
-      <header class="topbar">
-        <a class="wordmark" href="#" id="home-link" aria-label="Back to the menu"><span class="mark">LL</span><span>livive<span class="muted">.net</span></span></a>
-        <nav class="topnav" aria-label="Main navigation">
-          <span class="runtime"><i></i> LUNAR LANDER · FREE PLAY</span>
-          <a href="./about.html#pilots">Pilot credits <span aria-hidden="true">↗</span></a>
-          <a href="./about.html">About</a>
-        </nav>
+    <div class="cabinet" id="cabinet">
+      <header class="cabinet-marquee">
+        <div class="marquee-studio">LIVIVE.NET STUDIOS</div>
+        <div class="marquee-game">
+          <span class="marquee-word">LUNAR <em>LANDER</em></span>
+          <span class="marquee-edition">TOURNAMENT EDITION</span>
+        </div>
+        <div class="marquee-plate">TOURNAMENT EDITION ★ FOUR-PILOT CABINET</div>
+        <button
+          id="music-toggle"
+          class="music-toggle"
+          type="button"
+          aria-pressed="true"
+          aria-label="Toggle music"
+        >
+          MUSIC ON
+        </button>
       </header>
 
-      <!-- ============================ TITLE ============================ -->
-      <section id="screen-title" class="screen title-screen" aria-label="Main menu">
-        <div class="title-hero">
-          <p class="eyebrow freeplay-badge">FREE PLAY · FOUR PILOTS ON DECK</p>
-          <h1 class="title-word">LUNAR<em>LANDER</em></h1>
-          <p class="cabinet-plate">FOUR-PILOT CABINET</p>
-          <p class="title-sub" id="title-sub">Four pilots. One pad. Stick the landing.</p>
-          <p id="boot-status" class="boot-status" aria-live="polite"><span class="live-dot"></span>WARMING UP THE CABINET…</p>
-          <div class="title-menu">
-            <button class="menu-btn menu-btn-primary" data-screen="tournament" type="button"><b>TOURNAMENT</b><span>4 pilots · 10 rounds · live standings</span></button>
-            <button class="menu-btn" data-screen="play" type="button"><b>PLAY</b><span>Fly it yourself — or hand the stick to a pilot.</span></button>
-            <button class="menu-btn" data-screen="options" type="button"><b>OPTIONS</b><span>Flight speed and mid-air faults.</span></button>
-            <a class="menu-btn" href="./about.html"><b>ABOUT</b><span>Meet the pilots and the cabinet.</span></a>
-          </div>
-        </div>
-      </section>
+      <main class="cabinet-screen" id="cabinet-screen">
+        <p id="cabinet-status" class="sr-status" role="status" aria-live="polite"></p>
 
-      <!-- ============================ PLAY ============================ -->
-      <section id="screen-play" class="screen" hidden aria-label="Flight deck">
-        <div class="screen-head"><button class="back-btn" data-screen="title" type="button">← MENU</button><span class="screen-kicker">FLIGHT DECK</span></div>
-        <section class="game" aria-label="Lunar Lander game">
-          <div class="game-head"><div><span class="live-dot"></span><span id="status" aria-live="polite">WARMING UP THE CABINET</span></div><span id="episode">FLIGHT —</span></div>
-          <div class="controller-row">
-            <div class="controller-label"><span class="label">PILOT</span><strong>Choose who flies</strong></div>
-            <div class="controller-options" role="group" aria-label="Pilot">
-              <button id="human-controller" class="controller" type="button" title="You fly. ←/→ to steer, ↑ for the main engine." aria-label="Human Pilot: you fly the lander directly." aria-pressed="false" disabled><span class="controller-name">Human Pilot</span><span class="controller-state">SELECT</span></button>
-              <button id="override-controller" class="controller" type="button" title="The AI flies. Hold ←/→ or ↑ to take over, release to hand back the stick." aria-label="Autopilot + Override: the AI flies, and held steering or engine input takes over." aria-pressed="false" disabled><span class="controller-name">Autopilot + Override</span><span class="controller-state">SELECT</span></button>
-              <button id="policy-controller" class="controller" type="button" title="The pilot flies every move on its own." aria-label="AI Pilot: the pilot controls every move on its own." aria-pressed="false" disabled><span class="controller-name">AI Pilot</span><span id="policy-label" class="controller-state">SELECT</span></button>
-            </div>
-            <p id="controller-help" class="controller-help" hidden></p>
-          </div>
-          <div id="screen-wrap" class="screen-wrap">
-            <canvas id="screen" width="600" height="400" aria-label="Lunar lander simulation"></canvas>
-            <div id="overlay" class="overlay"><div class="loader"></div><p id="message">Rolling out the pilots…</p></div>
-          </div>
-          <div id="telemetry" class="telemetry">
-            <div><span class="label">ALTITUDE</span><strong id="altitude">—</strong><small>m</small></div>
-            <div><span class="label">HORIZONTAL SPEED</span><strong id="hspeed">—</strong><small>m/s</small></div>
-            <div><span class="label">VERTICAL SPEED</span><strong id="vspeed">—</strong><small>m/s</small></div>
-            <div><span class="label">SCORE</span><strong id="reward">—</strong><small>pts</small></div>
-          </div>
-          <div class="controls-row">
-            <div id="controls-hint" class="hint controls-hint"><kbd>←</kbd><kbd>→</kbd> steer <span class="sep">·</span> <kbd>↑</kbd> main engine <span class="sep">·</span> <kbd>↓</kbd> reset</div>
-            <label class="model-select" id="model-select-field" for="model-select" hidden>
-              <span>PILOT</span>
-              <select id="model-select" title="Choose which pilot flies in AI Pilot and Autopilot + Override modes."></select>
-            </label>
-            <p id="pilot-source" class="pilot-source" hidden></p>
-            <button id="reset" type="button" disabled>RESET <span>↻</span></button>
+        <!-- ============================= BOOT ============================= -->
+        <section id="screen-boot" class="screen boot-screen" aria-label="Studio logo">
+          <div class="boot-lockup">
+            <div class="boot-mark">LL</div>
+            <p class="boot-studio">LIVIVE.NET STUDIOS</p>
+            <p class="boot-presents">PRESENTS</p>
           </div>
         </section>
-      </section>
 
-      <!-- ========================= TOURNAMENT ========================= -->
-      <section id="screen-tournament" class="screen" hidden aria-label="Tournament">
-        <div class="screen-head"><button class="back-btn" data-screen="title" type="button">← MENU</button><span class="screen-kicker">TOURNAMENT</span></div>
+        <!-- ============================ ATTRACT ========================== -->
+        <section
+          id="screen-attract"
+          class="screen attract-screen"
+          hidden
+          aria-label="Attract mode"
+        >
+          <div class="attract-hero">
+            <p class="attract-eyebrow">FREE PLAY · TOURNAMENT EDITION</p>
+            <h1 class="attract-title">LUNAR<em>LANDER</em></h1>
+            <p class="attract-tagline" id="attract-tagline">INSERT COIN — PRESS START</p>
+            <button id="start-game" class="coin-btn" type="button">
+              <span class="coin-glyph" aria-hidden="true">◉</span> START GAME
+            </button>
+            <p class="attract-hint">PRESS START · INSERT COIN</p>
+          </div>
+          <div class="attract-panel">
+            <p class="panel-tag">HIGH SCORES</p>
+            <ol class="highscore-list" id="highscore-list" aria-label="High scores"></ol>
+          </div>
+          <div class="attract-demo" aria-hidden="true">
+            <canvas id="attract-canvas" width="300" height="200"></canvas>
+          </div>
+        </section>
 
-        <div id="tournament-setup" class="tournament-setup">
-          <div class="setup-card">
-            <p class="eyebrow">PICK YOUR FOUR CONTENDERS</p>
-            <p class="setup-sub">Every round, all four contenders fly the same course. Score, round wins, and clean landings stack up until one pilot takes the crown.</p>
-            <div class="setup-grid">
-              <label class="slot"><span>CONTENDER 1</span><select class="tourn-model" data-slot="0"></select></label>
-              <label class="slot"><span>CONTENDER 2</span><select class="tourn-model" data-slot="1"></select></label>
-              <label class="slot"><span>CONTENDER 3</span><select class="tourn-model" data-slot="2"></select></label>
-              <label class="slot"><span>CONTENDER 4</span><select class="tourn-model" data-slot="3"></select></label>
+        <!-- ============================= MENU ============================ -->
+        <section id="screen-menu" class="screen center-screen" hidden aria-label="Main menu">
+          <h2 class="screen-title">MAIN MENU</h2>
+          <div class="menu-stack">
+            <button class="cab-btn cab-btn-primary" data-screen="solo" type="button">
+              <b>SINGLE PLAYER</b><span>solo flight training</span>
+            </button>
+            <button class="cab-btn cab-btn-primary" data-screen="mode" type="button">
+              <b>TOURNAMENT</b><span>1v1 · 2v2 · 4-pilot cup</span>
+            </button>
+            <a class="cab-btn" href="./about.html"><b>ABOUT / CREDITS</b><span>the pilots &amp; the cabinet</span></a>
+          </div>
+          <p class="screen-foot">USE UP/DOWN · PRESS START</p>
+        </section>
+
+        <!-- ============================= SOLO ============================ -->
+        <section id="screen-solo" class="screen" hidden aria-label="Solo flight">
+          <div class="screen-head">
+            <button class="cab-btn cab-btn-ghost back-btn" data-screen="menu" type="button">
+              ← MENU
+            </button>
+            <span class="screen-kicker">SOLO FLIGHT</span>
+          </div>
+          <div class="game">
+            <div class="game-head">
+              <div><span class="live-dot"></span><span id="solo-status" aria-live="polite">WARMING UP THE CABINET</span></div>
+              <span id="solo-episode">FLIGHT —</span>
             </div>
-            <div class="setup-actions">
-              <label class="time-scale" for="tournament-rounds"><span>ROUNDS</span>
-                <select id="tournament-rounds">
-                  <option value="5">5 rounds</option>
-                  <option value="10" selected>10 rounds</option>
-                  <option value="20">20 rounds</option>
-                </select>
+            <div class="controller-row">
+              <div class="controller-label"><span class="label">PILOT</span><strong>Choose who flies</strong></div>
+              <div class="controller-options" role="group" aria-label="Pilot">
+                <button id="human-controller" class="controller" type="button" title="You fly. ←/→ to steer, ↑ for the main engine." aria-label="Human Pilot: you fly the lander directly." aria-pressed="false" disabled><span class="controller-name">HUMAN PILOT</span><span class="controller-state">SELECT</span></button>
+                <button id="policy-controller" class="controller" type="button" title="The pilot flies every move on its own." aria-label="AI Pilot: the pilot controls every move on its own." aria-pressed="false" disabled><span class="controller-name">AI PILOT</span><span id="policy-label" class="controller-state">SELECT</span></button>
+                <button id="override-controller" class="controller" type="button" title="The AI flies. Hold ←/→ or ↑ to take over, release to hand back the stick." aria-label="Autopilot + Override: the AI flies, and held steering or engine input takes over." aria-pressed="false" disabled><span class="controller-name">AUTOPILOT + OVERRIDE</span><span class="controller-state">SELECT</span></button>
+              </div>
+              <p id="controller-help" class="controller-help" hidden></p>
+            </div>
+            <div id="solo-screen-wrap" class="screen-wrap">
+              <canvas id="solo-canvas" width="600" height="400" aria-label="Lunar lander simulation"></canvas>
+              <div id="solo-overlay" class="overlay"><div class="loader"></div><p id="solo-message">Rolling out the pilots…</p></div>
+            </div>
+            <div id="solo-telemetry" class="telemetry">
+              <div><span class="label">ALTITUDE</span><strong id="altitude">—</strong><small>m</small></div>
+              <div><span class="label">HORIZONTAL</span><strong id="hspeed">—</strong><small>m/s</small></div>
+              <div><span class="label">VERTICAL</span><strong id="vspeed">—</strong><small>m/s</small></div>
+              <div><span class="label">SCORE</span><strong id="reward">—</strong><small>pts</small></div>
+            </div>
+            <div class="controls-row">
+              <div id="controls-hint" class="hint controls-hint"><kbd>←</kbd><kbd>→</kbd> steer <span class="sep">·</span> <kbd>↑</kbd> main engine <span class="sep">·</span> <kbd>↓</kbd> reset</div>
+              <label class="model-select" id="model-select-field" for="model-select" hidden>
+                <span>PILOT</span>
+                <select id="model-select" title="Choose which pilot flies in AI Pilot and Autopilot + Override modes."></select>
               </label>
-              <button id="tournament-start" class="start-btn" type="button">START TOURNAMENT</button>
+              <p id="pilot-source" class="pilot-source" hidden></p>
+              <button id="solo-reset" class="cab-btn cab-btn-ghost" type="button" disabled>RESET ↻</button>
+            </div>
+            <div class="touch-pad" id="solo-touch" aria-label="Touch flight controls">
+              <button class="touch-btn" data-touch="ArrowLeft" type="button" aria-label="Rotate left">◀</button>
+              <button class="touch-btn touch-thrust" data-touch="ArrowUp" type="button" aria-label="Main engine">▲ THRUST</button>
+              <button class="touch-btn" data-touch="ArrowRight" type="button" aria-label="Rotate right">▶</button>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div id="tournament-status" class="tournament-status" hidden>
-          <div class="tourn-head"><span>ROUND <b id="tourn-round-num">1</b> / <span id="tourn-rounds-total">10</span></span><span id="tourn-phase" class="tourn-phase">SAME COURSE FOR ALL CONTENDERS</span></div>
-          <div id="tournament-standings" class="standings"></div>
-          <div id="multi-board" class="multi-board" aria-label="Four models racing"></div>
-          <div id="multi-error" class="multi-error" hidden></div>
-        </div>
-
-        <div id="tournament-results" class="results" hidden></div>
-        <div class="results-actions"><button id="tournament-again" class="back-btn" type="button" hidden>RUN AGAIN</button></div>
-      </section>
-
-      <!-- =========================== OPTIONS =========================== -->
-      <section id="screen-options" class="screen" hidden aria-label="Options">
-        <div class="screen-head"><button class="back-btn" data-screen="title" type="button">← MENU</button><span class="screen-kicker">OPTIONS</span></div>
-        <div class="options-card">
-          <p class="eyebrow">SIMULATION</p>
-          <label class="time-scale" for="time-scale">
-            <span>TIME SCALE</span>
-            <select id="time-scale" title="Simulation speed relative to default. 0.25× runs four times slower; 4× runs four times faster.">
-              <option value="0.25">0.25× speed · 4× slower</option>
-              <option value="0.5">0.5× speed · 2× slower</option>
-              <option value="1" selected>1× speed · default</option>
-              <option value="2">2× speed</option>
-              <option value="4">4× speed</option>
-            </select>
-          </label>
-
-          <p class="eyebrow options-gap">FLIGHT FAULTS <small>· applied in PLAY and TOURNAMENT except where noted</small></p>
-          <div class="fault-controls" role="group" aria-label="Flight hardware faults">
-            <label class="fault-control" for="sensor-fault">
-              <span>SENSOR FAULT</span>
-              <select id="sensor-fault" title="At each AI decision, this chance replaces its current observation with the previous physics-step observation. Off during Tournament.">
-                <option value="0" selected>OFF</option>
-                <option value="5">5%</option>
-                <option value="10">10%</option>
-                <option value="25">25%</option>
-                <option value="50">50%</option>
-              </select>
-            </label>
-            <label class="fault-control" for="thruster-fault">
-              <span>THRUSTER FAULT</span>
-              <select id="thruster-fault" title="Each physics step, this chance drops a requested thruster action or fires a random thruster when none was requested. Off during Tournament.">
-                <option value="0" selected>OFF</option>
-                <option value="5">5%</option>
-                <option value="10">10%</option>
-                <option value="25">25%</option>
-                <option value="50">50%</option>
-              </select>
-            </label>
-            <span id="fault-feedback" class="fault-feedback" aria-live="polite">LAST GLITCH · NONE</span>
+        <!-- ========================== MODE SELECT ======================== -->
+        <section id="screen-mode" class="screen center-screen" hidden aria-label="Select mode">
+          <div class="screen-head">
+            <button class="cab-btn cab-btn-ghost back-btn" data-screen="menu" type="button">← MENU</button>
+            <span class="screen-kicker">TOURNAMENT</span>
           </div>
-        </div>
-      </section>
+          <h2 class="screen-title">SELECT MODE</h2>
+          <div class="menu-stack" id="mode-list">
+            <button class="cab-btn cab-mode" data-mode="versus" type="button">
+              <b>[P1 ■] VERSUS — 1 v 1</b><span>best of 3 · DEFAULT</span>
+            </button>
+            <button class="cab-btn cab-mode" data-mode="doubles" type="button">
+              <b>[P2 ■] DOUBLES — 2 v 2</b><span>best of 3</span>
+            </button>
+            <button class="cab-btn cab-mode" data-mode="cup" type="button">
+              <b>[P3 ■] CUP — 4 PILOTS</b><span>10 seeded rounds</span>
+            </button>
+            <button class="cab-btn cab-btn-ghost" data-screen="menu" type="button"><b>BACK</b><span>return to menu</span></button>
+          </div>
+        </section>
 
-      <footer><span>CABINET ONLINE <b>·</b> FOUR PILOTS ON DECK</span><a href="./about.html">How the cabinet works <span aria-hidden="true">↗</span></a></footer>
-      <p class="footer-caveat">Sandbox physics · scores are this cabinet’s, not the official leaderboard.</p>
-    </main>
+        <!-- ======================== SELECT PLAYERS ====================== -->
+        <section id="screen-players" class="screen" hidden aria-label="Select players">
+          <div class="screen-head">
+            <button class="cab-btn cab-btn-ghost back-btn" data-screen="mode" type="button">← BACK</button>
+            <span class="screen-kicker">SELECT PLAYERS</span>
+            <span class="context-chip" id="players-chip">VERSUS · BEST OF 3</span>
+          </div>
+          <div class="players-grid" id="players-grid"></div>
+          <p class="roster-footer">
+            Roster: seekdepth jpeckenpaugh · Miftakhov · cpow-89 · khordoo · Sanket — every pilot links to its source
+          </p>
+          <div class="screen-actions">
+            <button class="cab-btn cab-btn-ghost" data-screen="mode" type="button">BACK</button>
+            <button class="cab-btn cab-btn-primary" id="players-confirm" type="button">CONFIRM ▶</button>
+          </div>
+        </section>
+
+        <!-- ===================== MATCH / ROUND MODIFIERS ================= -->
+        <section id="screen-mods" class="screen" hidden aria-label="Modifiers">
+          <div class="screen-head">
+            <button class="cab-btn cab-btn-ghost back-btn" id="mods-back" type="button">← BACK</button>
+            <span class="screen-kicker" id="mods-title">MATCH MODIFIERS</span>
+            <span class="context-chip" id="mods-chip">1 v 1 · BEST OF 3</span>
+          </div>
+          <div class="fairness-banner">
+            <span class="lock-glyph" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 2a5 5 0 0 0-5 5v3H5a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-2V7a5 5 0 0 0-5-5zm-3 5a3 3 0 0 1 6 0v3H9V7zm3 7a1.5 1.5 0 0 1 1 2.6V18h-2v-1.4A1.5 1.5 0 0 1 12 14z" fill="currentColor"/></svg></span>
+            ALL PILOTS SHARE THE SAME HAZARD TIMELINE.
+          </div>
+          <p class="seed-chip" id="mods-seed">COURSE SEED — · LOCKED</p>
+          <div class="hazard-grid" id="mods-grid"></div>
+          <p class="loadout-summary" id="mods-summary">HAZARDS ARMED: 0 · DIFFICULTY ☆☆☆</p>
+          <div class="screen-actions mods-actions">
+            <button class="cab-btn cab-btn-ghost" id="mods-clear" type="button">CLEAR ALL</button>
+            <button class="cab-btn cab-btn-ghost" id="mods-recommend" type="button">RECOMMENDED</button>
+            <button class="cab-btn cab-btn-primary" id="mods-proceed" type="button">TO THE PAD ▶</button>
+          </div>
+        </section>
+
+        <!-- ========================== ROUND INTRO ======================== -->
+        <section id="screen-roundintro" class="screen center-screen" hidden aria-label="Round intro">
+          <div class="roundintro-card">
+            <p class="screen-kicker" id="roundintro-mode">VERSUS</p>
+            <h2 class="roundintro-title" id="roundintro-round">ROUND 1</h2>
+            <p class="roundintro-arena" id="roundintro-arena">SALVAGE STATION-04</p>
+            <p class="roundintro-announcer" id="roundintro-announcer">PILOTS, TO YOUR PADS.</p>
+            <p class="roundintro-hazards" id="roundintro-hazards">CLEAN SKY — NO HAZARDS.</p>
+            <p class="roundintro-count" id="roundintro-count">3</p>
+          </div>
+        </section>
+
+        <!-- ============================= MATCH =========================== -->
+        <section id="screen-match" class="screen" hidden aria-label="Match">
+          <div class="match-head">
+            <button class="cab-btn cab-btn-ghost back-btn" id="match-abandon" type="button">✕ QUIT</button>
+            <span class="match-round" id="match-round">ROUND 1 / 3 · SALVAGE STATION-04</span>
+            <span class="match-pips" id="match-pips"></span>
+          </div>
+          <div id="multi-board" class="multi-board" aria-label="Pilots racing"></div>
+          <div id="match-error" class="multi-error" hidden></div>
+          <div class="touch-pad" id="match-touch" hidden aria-label="Touch flight controls">
+            <button class="touch-btn" data-touch="ArrowLeft" type="button" aria-label="Rotate left">◀</button>
+            <button class="touch-btn touch-thrust" data-touch="ArrowUp" type="button" aria-label="Main engine">▲ THRUST</button>
+            <button class="touch-btn" data-touch="ArrowRight" type="button" aria-label="Rotate right">▶</button>
+          </div>
+        </section>
+
+        <!-- ============================= RESULT ========================== -->
+        <section id="screen-result" class="screen" hidden aria-label="Round result">
+          <div class="result-card" id="result-card">
+            <p class="screen-kicker" id="result-kicker">ROUND COMPLETE</p>
+            <h2 class="result-winner" id="result-winner">ROUND 1 — PILOT</h2>
+            <p class="result-margin" id="result-margin">+0 PTS</p>
+            <div class="result-strip" id="result-pips"></div>
+            <canvas class="confetti" id="result-confetti" aria-hidden="true"></canvas>
+          </div>
+          <div class="screen-actions">
+            <button class="cab-btn cab-btn-primary" id="result-replay" type="button">REPLAY THE FINISH ▶</button>
+          </div>
+        </section>
+
+        <!-- ============================= REPLAY ========================== -->
+        <section id="screen-replay" class="screen" hidden aria-label="Replay">
+          <div class="screen-head">
+            <span class="screen-kicker">REPLAY</span>
+            <span class="replay-stamp">REPLAY</span>
+          </div>
+          <div class="screen-wrap replay-wrap">
+            <canvas id="replay-canvas" width="600" height="400" aria-label="Replay of the finish"></canvas>
+          </div>
+          <div class="screen-actions">
+            <button class="cab-btn cab-btn-primary" id="replay-continue" type="button">CONTINUE ▶</button>
+          </div>
+        </section>
+
+        <!-- ========================= CELEBRATE WIN ======================= -->
+        <section id="screen-win" class="screen celebrate" hidden aria-label="Match won">
+          <p class="celebrate-eyebrow">MATCH WON</p>
+          <div class="podium" id="win-podium"></div>
+          <h2 class="celebrate-name" id="win-name">CHAMPION</h2>
+          <p class="celebrate-tagline" id="win-tagline">STICKED THE LANDING.</p>
+          <canvas class="confetti" id="win-confetti" aria-hidden="true"></canvas>
+          <p class="celebrate-continue">PRESS START TO CONTINUE</p>
+        </section>
+
+        <!-- ======================== CELEBRATE LOSE ======================= -->
+        <section id="screen-lose" class="screen celebrate lose" hidden aria-label="Match lost">
+          <p class="celebrate-eyebrow">MATCH LOST</p>
+          <div class="crashed-lander" aria-hidden="true">
+            <div class="crash-hull"></div>
+            <div class="crash-steam"></div>
+          </div>
+          <p class="celebrate-tagline" id="lose-tagline">THE PAD IS HARD. TRY AGAIN.</p>
+          <p class="celebrate-margin" id="lose-margin">—</p>
+          <div class="screen-actions lose-actions">
+            <button class="cab-btn cab-btn-primary" id="lose-rematch" type="button">REMATCH</button>
+            <button class="cab-btn cab-btn-ghost" id="lose-menu" type="button">MAIN MENU</button>
+          </div>
+        </section>
+
+        <!-- ========================== CUP STANDINGS ====================== -->
+        <section id="screen-cup" class="screen" hidden aria-label="Cup standings">
+          <div class="screen-head">
+            <span class="screen-kicker">CUP STANDINGS</span>
+            <span class="context-chip" id="cup-chip">4 PILOTS · 10 ROUNDS</span>
+          </div>
+          <div class="podium" id="cup-podium"></div>
+          <table class="standings-table" id="cup-table"></table>
+          <div class="highscore-entry" id="cup-entry" hidden>
+            <p class="panel-tag">TOP 5 — ENTER YOUR INITIALS</p>
+            <input id="cup-initials" maxlength="3" inputmode="latin" autocomplete="off" aria-label="Three-letter initials" placeholder="AAA" />
+            <button class="cab-btn cab-btn-primary" id="cup-save" type="button">SAVE SCORE</button>
+          </div>
+          <div class="screen-actions">
+            <button class="cab-btn cab-btn-ghost" id="cup-replay" type="button">REPLAY THE FINISH ▶</button>
+            <button class="cab-btn cab-btn-primary" id="cup-continue" type="button">PRESS START TO CONTINUE</button>
+          </div>
+        </section>
+      </main>
+
+      <footer class="cabinet-coin-door">
+        <span>INSERT COIN · CREDIT 01</span>
+        <a href="./about.html">How the cabinet works ↗</a>
+      </footer>
+    </div>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
     <script src="app.js" type="module"></script>
   </body>
