@@ -1,0 +1,85 @@
+{
+  "models": [
+    {
+      "id": "ppo",
+      "label": "jpeckenpaugh sb3 PPO",
+      "url": "models/ppo-LunarLander-v2.onnx",
+      "author": "seekdepth",
+      "algorithm": "PPO",
+      "role": "default",
+      "source": "https://huggingface.co/seekdepth/ppo-LunarLander-v2"
+    },
+    {
+      "id": "ashbellett",
+      "label": "Bellett DQN",
+      "url": "models/contenders/ashbellett/ashbellett-dqn.onnx",
+      "author": "Bellett",
+      "algorithm": "DQN",
+      "role": "contender",
+      "source": "https://github.com/ashbellett/reinforcement-learning"
+    },
+    {
+      "id": "cpow",
+      "label": "cpow-89 Ext. DQN",
+      "url": "models/contenders/cpow/cpow-dueling-dqn.onnx",
+      "author": "cpow-89",
+      "algorithm": "Extended DQN",
+      "role": "contender",
+      "source": "https://github.com/cpow-89/Extended-Deep-Q-Learning-For-Open-AI-Gym-Environments"
+    },
+    {
+      "id": "khordoo",
+      "label": "khordoo n-step DQN",
+      "url": "models/contenders/khordoo/khordoo-nstep-dqn.onnx",
+      "author": "khordoo",
+      "algorithm": "n-step DQN",
+      "role": "contender",
+      "source": "https://github.com/khordoo/Deep-Reinforcement-Learning-with-PyTorch"
+    },
+    {
+      "id": "miftakhov",
+      "label": "Miftakhov Dueling DDQN",
+      "url": "models/contenders/miftakhov/miftakhov-dueling-ddqn.onnx",
+      "author": "Miftakhov",
+      "algorithm": "Dueling Double DQN",
+      "role": "contender",
+      "source": "https://github.com/RMiftakhov/LunarLander-v2-drlnd"
+    },
+    {
+      "id": "nikhilbarhate",
+      "label": "Barhate Actor-Critic",
+      "url": "models/contenders/nikhilbarhate/nikhilbarhate-actorcritic.onnx",
+      "author": "Barhate",
+      "algorithm": "Actor-Critic",
+      "role": "contender",
+      "source": "https://github.com/nikhilbarhate99/Actor-Critic"
+    },
+    {
+      "id": "sanket",
+      "label": "Sanket DQN",
+      "url": "models/contenders/sanket/sanket-dqn.onnx",
+      "author": "sanket",
+      "algorithm": "DQN",
+      "role": "contender",
+      "source": "https://github.com/sanketsans/openAIenv"
+    },
+    {
+      "id": "udacity",
+      "label": "Udacity DQN",
+      "url": "models/contenders/udacity/udacity-dqn.onnx",
+      "author": "Udacity",
+      "algorithm": "DQN",
+      "role": "contender",
+      "source": "https://github.com/udacity/deep-reinforcement-learning"
+    },
+    {
+      "id": "xinliyu",
+      "label": "Xinli Yu DQN",
+      "url": "models/contenders/xinliyu/xinliyu-dqn.onnx",
+      "author": "Xinli Yu",
+      "algorithm": "DQN",
+      "role": "contender",
+      "source": "https://github.com/XinliYu/RL-Projects"
+    }
+  ]
+}

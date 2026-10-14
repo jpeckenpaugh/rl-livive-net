@@ -1,0 +1,154 @@
+/* ============================================================================
+ * LUNAR LANDER — CABINET MANUAL (ABOUT OVERLAY)
+ * The cabinet chrome frames a plain web document: a single ~68-character
+ * column, real headings, small body text and underlined links. Copy uses the
+ * cabinet's readable body face (VT323); the cabinet display face is kept for
+ * the panel bar only, so the manual reads like a web page rather than a menu.
+ * ==========================================================================*/
+
+.manual-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 26px;
+}
+.manual-overlay[hidden] { display: none; }
+
+.manual-dimmer {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 5, 10, 0.8);
+}
+
+/* ---------------------------------------------------------- cabinet frame */
+.manual-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 720px);
+  max-height: 100%;
+  background: #0f141d;
+  border: 3px solid #1b2231;
+  box-shadow: inset 0 0 0 2px #2a3450, 0 18px 60px rgba(0, 0, 0, 0.72);
+  color: var(--text);
+  overflow: hidden;
+}
+.manual-panel > .bolt { z-index: 2; }
+
+.manual-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 14px;
+  background: #131826;
+  border-bottom: 3px solid #1b2231;
+}
+.manual-bar-title { font: 10px/1 var(--display); letter-spacing: 3px; color: var(--gold); }
+.manual-close {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: #0c1018;
+  border: 1px solid #3a4658;
+  color: #cfe3ee;
+  font: 16px/1 var(--body);
+  cursor: pointer;
+}
+.manual-close:hover, .manual-close:focus-visible { border-color: var(--gold); color: var(--gold); }
+
+/* ------------------------------------------------------- web-document body */
+.manual-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 26px 30px 30px;
+  background: #0f141d;
+}
+.manual-doc {
+  max-width: 68ch;
+  margin: 0 auto;
+}
+.manual-doc h1 {
+  font: 400 30px/1.15 var(--body);
+  letter-spacing: 0.5px;
+  color: var(--amber);
+  margin: 0 0 8px;
+}
+.manual-doc h2 {
+  font: 400 20px/1.2 var(--body);
+  letter-spacing: 0.5px;
+  color: var(--gold);
+  margin: 26px 0 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--line);
+}
+.manual-doc h3 {
+  font: 400 16px/1.2 var(--body);
+  letter-spacing: 0.5px;
+  color: var(--slate);
+  margin: 0 0 4px;
+}
+.manual-doc p { margin: 0 0 12px; font-size: 17px; line-height: 1.55; color: var(--text); }
+.manual-lede { font-size: 19px; line-height: 1.5; color: var(--muted); }
+.manual-doc ul { margin: 0 0 12px; padding-left: 22px; }
+.manual-doc li { margin: 0 0 7px; font-size: 17px; line-height: 1.55; }
+.manual-doc a { color: var(--gold); text-decoration: underline; }
+.manual-doc a:hover, .manual-doc a:focus-visible { color: var(--amber); }
+.manual-doc code {
+  font-family: var(--body);
+  color: var(--amber);
+  background: #0a0e16;
+  padding: 0 4px;
+}
+.manual-note { margin-top: 10px; font-size: 15px; color: var(--muted); }
+
+/* ------------------------------------------------------------------ roster */
+.manual-roster {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 16px;
+}
+.manual-roster th, .manual-roster td {
+  text-align: left;
+  vertical-align: top;
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.manual-roster thead th {
+  font: 9px/1 var(--display);
+  letter-spacing: 1px;
+  color: var(--slate);
+  border-bottom: 2px solid #2a3450;
+}
+.manual-roster th[scope="row"] { color: var(--text); font-weight: 400; }
+.manual-roster a { white-space: nowrap; }
+
+/* --------------------------------------------------- grouped source links */
+.manual-source-group { margin: 0 0 14px; }
+.manual-source-group ul { list-style: none; margin: 0; padding: 0; }
+.manual-source-group li { margin: 0 0 4px; font-size: 16px; line-height: 1.5; }
+
+/* -------------------------------------------------------- sticky footer bar */
+.manual-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #131826;
+  border-top: 3px solid #1b2231;
+}
+.manual-source-link { color: var(--gold); text-decoration: underline; font-size: 17px; }
+.manual-source-link:hover { color: var(--amber); }
+.manual-close-btn {
+  padding: 8px 16px;
+  min-height: 0;
+  font: 10px/1 var(--display);
+}

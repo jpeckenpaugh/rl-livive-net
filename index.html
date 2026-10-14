@@ -25,7 +25,7 @@
           <button id="cabinet-reset" class="hdr-icon" type="button" aria-label="Reset to startup screen" title="Reset to startup screen">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9" /><path d="M7.6 6.3a7 7 0 1 0 8.8 0" /></svg>
           </button>
-          <button id="cabinet-about" class="hdr-icon" data-screen="about" type="button" aria-label="About the cabinet" title="About">
+          <button id="cabinet-about" class="hdr-icon" type="button" aria-label="Open the cabinet manual" title="About">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.3 9.2a2.7 2.7 0 1 1 3.6 2.5c-.8.3-1.1.9-1.1 1.7v.3" /><path d="M11.9 17.2h.1" /></svg>
           </button>
           <button id="sfx-toggle" class="hdr-icon" type="button" aria-pressed="true" aria-label="Toggle sound effects" title="Sound effects">
@@ -288,100 +288,6 @@
           </div>
         </section>
 
-        <!-- ============================== ABOUT ========================== -->
-        <section id="screen-about" class="screen about-screen" hidden aria-label="About and credits">
-          <div class="screen-head">
-            <button class="cab-btn cab-btn-ghost back-btn" data-screen="menu" type="button">← BACK</button>
-            <span class="screen-kicker">ABOUT / CREDITS</span>
-            <span class="context-chip">THE CABINET</span>
-          </div>
-
-          <section class="about-intro">
-            <p class="about-eyebrow">LUNAR LANDER — TOURNAMENT EDITION</p>
-            <h2 class="about-title">Who can <em>stick the landing?</em></h2>
-            <p class="about-lede">Four pilots share this pad — and you can be one of them. Fly solo, drop into a 1v1 or 2v2 best-of-three, or run the four-pilot Cup. Same sky, same hazards, one question: who sticks the landing?</p>
-          </section>
-
-          <section class="about-callout" aria-label="The fairness guarantee">
-            <span class="live-dot"></span>
-            <div><strong>Every pilot flies the identical course and the identical hazard timeline</strong>
-              <p>Same seed, same step, same sky. When a hazard fires, it fires for every pilot at the same physics step — so a match is won on skill, not luck.</p></div>
-          </section>
-
-          <section class="about-callout about-callout-lineage" aria-label="Where this cabinet came from">
-            <span class="live-dot"></span>
-            <div><strong>From a course project to a cabinet</strong>
-              <p>This cabinet began with the <a href="https://huggingface.co/learn/deep-rl-course/en/unit1/hands-on" target="_blank" rel="noreferrer">Hugging Face Deep RL Course (Unit 1 hands-on)</a>, which trains a PPO pilot on LunarLander-v2. That checkpoint — <a href="https://huggingface.co/seekdepth/ppo-LunarLander-v2" target="_blank" rel="noreferrer">seekdepth/ppo-LunarLander-v2</a> — became the default pilot, and this Tournament Edition plays it live in your browser alongside four more pilots imported from other builders.</p></div>
-          </section>
-
-          <section class="about-grid" aria-label="The cabinet's modes and tooling">
-            <article class="about-card">
-              <p class="about-eyebrow">01 / HOW TO USE IT</p>
-              <h3>Four ways to fly.</h3>
-              <p><strong>Single Player</strong> is the training corner: fly it yourself, let the AI fly solo, or grab an <strong>Autopilot + Override</strong> stick. <strong>Tournament</strong> runs <strong>Versus</strong> (1v1), <strong>Doubles</strong> (2v2), or the four-pilot <strong>Cup</strong>. Arm hazards per match or per round — each has graded intensity — and every pilot flies the exact same sky.</p>
-            </article>
-            <article class="about-card">
-              <p class="about-eyebrow">02 / THE PILOTS</p>
-              <h3>Eight readings in. One move out.</h3>
-              <p>Every pilot reads the same eight cockpit readings and picks one move: coast, tilt left, fire the main engine, or tilt right. Third-party DQN and PPO checkpoints are converted to the same <code>observation[8] → logits[4]</code> contract with parity validation.</p>
-              <div class="action-key"><span>READINGS</span><b>→</b><span>PILOT</span><b>→</b><span>MOVE</span></div>
-            </article>
-            <article class="about-card">
-              <p class="about-eyebrow">03 / TOOLING</p>
-              <h3>Python in the browser.</h3>
-              <p>The environment and physics run in Python through <strong>Pyodide 0.23.4</strong>. <strong>PyPyBox2D</strong> supplies the pure-Python rigid-body solver (Box2D 2.1-era) behind a small <strong>Gymnasium-compatible shim</strong>. JavaScript draws the canvas and runs inference with <strong>ONNX Runtime Web 1.19.2</strong> on its WebAssembly CPU backend.</p>
-            </article>
-            <article class="about-card">
-              <p class="about-eyebrow">04 / MODEL PIPELINE</p>
-              <h3>Era-pinned exporters.</h3>
-              <p>Docker images pinned to the era of each checkpoint (<code>python:3.7</code> + <code>torch==1.13</code>; <code>python:3.8</code> + <code>tensorflow==2.12</code> + <code>tf2onnx</code>) export third-party weights to the shared <code>observation[8] → logits[4]</code> ONNX contract, checked against the original policy before they fly here.</p>
-            </article>
-          </section>
-
-          <p class="physics-caveat">Sandbox physics · scores are this cabinet’s, not the official leaderboard.</p>
-
-          <section class="pilot-roster" aria-label="Pilot roster">
-            <p class="about-eyebrow">PILOT ROSTER</p>
-            <h3>Five pilots. Five builders.</h3>
-            <p class="roster-sub">Each contender links to the source it came from.</p>
-            <ul class="roster-list">
-              <li class="roster-row">
-                <div class="roster-id"><b>jpeckenpaugh sb3 PPO</b><span class="roster-algo">PPO</span></div>
-                <span class="roster-role default">Default pilot</span>
-                <a class="roster-source" href="https://huggingface.co/seekdepth/ppo-LunarLander-v2" target="_blank" rel="noreferrer">Hugging Face <span aria-hidden="true">↗</span></a>
-              </li>
-              <li class="roster-row">
-                <div class="roster-id"><b>Miftakhov Dueling DDQN</b><span class="roster-algo">Dueling Double DQN</span></div>
-                <span class="roster-role">Contender</span>
-                <a class="roster-source" href="https://github.com/RMiftakhov/LunarLander-v2-drlnd" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
-              </li>
-              <li class="roster-row">
-                <div class="roster-id"><b>Sanket DQN</b><span class="roster-algo">DQN</span></div>
-                <span class="roster-role">Contender</span>
-                <a class="roster-source" href="https://github.com/sanketsans/openAIenv" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
-              </li>
-              <li class="roster-row">
-                <div class="roster-id"><b>khordoo n-step DQN</b><span class="roster-algo">n-step DQN</span></div>
-                <span class="roster-role">Contender</span>
-                <a class="roster-source" href="https://github.com/khordoo/Deep-Reinforcement-Learning-with-PyTorch" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
-              </li>
-              <li class="roster-row">
-                <div class="roster-id"><b>cpow-89 Ext. DQN</b><span class="roster-algo">Extended DQN</span></div>
-                <span class="roster-role">Contender</span>
-                <a class="roster-source" href="https://github.com/cpow-89/Extended-Deep-Q-Learning-For-Open-AI-Gym-Environments" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
-              </li>
-            </ul>
-          </section>
-
-          <details class="implementation-note">
-            <summary>How the cabinet is built</summary>
-            <div class="implementation-copy">
-              <p>The port follows the classic LunarLander-v2 observation and reward structure but is not bit-for-bit identical to the native Box2D environment: it uses PyPyBox2D’s older Box2D 2.1-era solver plus a settled-contact landing completion rule.</p>
-              <p>Reference material: the <a href="https://gymnasium.farama.org/v0.28.1/environments/box2d/lunar_lander/" target="_blank" rel="noreferrer">LunarLander-v2 environment</a>, the <a href="https://github.com/Farama-Foundation/Gymnasium/blob/v0.26.3/gymnasium/envs/box2d/lunar_lander.py" target="_blank" rel="noreferrer">adapted LunarLander source</a>, <a href="https://stable-baselines3.readthedocs.io/en/v2.0.0/modules/ppo.html" target="_blank" rel="noreferrer">Stable-Baselines3 PPO</a>, <a href="https://pyodide.org/en/0.23.0/usage/downloading-and-deploying.html" target="_blank" rel="noreferrer">Pyodide 0.23-series deployment</a>, <a href="https://onnxruntime.ai/docs/tutorials/web/" target="_blank" rel="noreferrer">ONNX Runtime Web</a>, and <a href="https://pypi.org/project/pypybox2d/2.1-r331/" target="_blank" rel="noreferrer">PyPyBox2D 2.1-r331</a> by Ken Lauer.</p>
-              <p>The cabinet source is at <a href="https://github.com/jpeckenpaugh/rl-livive-net" target="_blank" rel="noreferrer">github.com/jpeckenpaugh/rl-livive-net</a>.</p>
-            </div>
-          </details>
-        </section>
         </main>
         </div>
 
@@ -416,6 +322,105 @@
         <span class="side-mark">TOURNAMENT EDITION</span>
       </aside>
     </div><!-- /cabinet -->
+
+    <!-- ===================== CABINET MANUAL (ABOUT) ================== -->
+    <div id="about-overlay" class="manual-overlay" hidden>
+      <div class="manual-dimmer" data-about-close></div>
+      <div class="manual-panel" role="dialog" aria-modal="true" aria-labelledby="manual-title">
+        <span class="bolt tl"></span><span class="bolt tr"></span>
+        <span class="bolt bl"></span><span class="bolt br"></span>
+        <header class="manual-bar">
+          <span class="manual-bar-title">ABOUT THIS CABINET</span>
+          <button id="about-close" class="manual-close" type="button" aria-label="Close the cabinet manual">×</button>
+        </header>
+        <div class="manual-scroll">
+          <article class="manual-doc">
+            <h1 id="manual-title">About this cabinet</h1>
+            <p class="manual-lede">A browser arcade cabinet that flies nine trained LunarLander-v2 policies — the first-party PPO pilot plus eight imported contenders — on one shared physics engine, so you can race them head-to-head.</p>
+
+            <section>
+              <h2>What this is</h2>
+              <p>A single web page that runs the classic LunarLander-v2 landing task and lets you fly it, or watch a trained policy fly it. Nine policies ship with the cabinet. Every pilot reads the same eight cockpit readings, picks one of four moves, and lands on the same physics. The only difference is the model.</p>
+            </section>
+
+            <section>
+              <h2>How it works</h2>
+              <ul>
+                <li>The environment and physics run in the browser in Python (Pyodide 0.23.4), using <strong>PyPyBox2D</strong>, a pure-Python Box2D 2.1-era solver, behind a small Gymnasium-compatible shim.</li>
+                <li>JavaScript draws the canvas and runs each policy with <strong>ONNX Runtime Web 1.19.2</strong> on its WebAssembly CPU backend.</li>
+                <li>Third-party checkpoints are converted offline to one contract — <code>observation[8] → logits[4]</code> — with parity checks, using era-pinned exporters, and checked against the original policy before they fly here.</li>
+                <li><strong>Every pilot flies the identical course and the identical hazard timeline.</strong> Same seed, same step, same sky.</li>
+              </ul>
+            </section>
+
+            <section>
+              <h2>The pilots</h2>
+              <table class="manual-roster">
+                <thead>
+                  <tr><th scope="col">Pilot</th><th scope="col">Algorithm</th><th scope="col">Builder</th><th scope="col">Source</th></tr>
+                </thead>
+                <tbody id="manual-roster-rows"></tbody>
+              </table>
+            </section>
+
+            <section class="manual-sources">
+              <h2>Sources &amp; further reading</h2>
+              <div class="manual-source-group">
+                <h3>This project</h3>
+                <ul>
+                  <li><a href="https://rl.livive.net/" target="_blank" rel="noreferrer">Live cabinet</a></li>
+                  <li><a href="https://github.com/jpeckenpaugh/rl-livive-net" target="_blank" rel="noreferrer">Source code</a></li>
+                </ul>
+              </div>
+              <div class="manual-source-group">
+                <h3>Model origin &amp; starting point</h3>
+                <ul>
+                  <li><a href="https://huggingface.co/seekdepth/ppo-LunarLander-v2" target="_blank" rel="noreferrer">Published PPO model card</a></li>
+                  <li><a href="https://huggingface.co/learn/deep-rl-course/en/unit1/hands-on" target="_blank" rel="noreferrer">Hugging Face Deep RL Course — Unit 1 hands-on</a></li>
+                </ul>
+              </div>
+              <div class="manual-source-group">
+                <h3>Environment &amp; reference material</h3>
+                <ul>
+                  <li><a href="https://gymnasium.farama.org/environments/box2d/lunar_lander/" target="_blank" rel="noreferrer">Gymnasium — LunarLander environment</a></li>
+                  <li><a href="https://github.com/Farama-Foundation/Gymnasium/blob/v0.26.3/gymnasium/envs/box2d/lunar_lander.py" target="_blank" rel="noreferrer">Adapted LunarLander source (v0.26.3)</a></li>
+                  <li><a href="https://github.com/openai/gym/wiki/Leaderboard#lunarlander-v2" target="_blank" rel="noreferrer">OpenAI Gym LunarLander-v2 leaderboard</a></li>
+                  <li><a href="https://stable-baselines3.readthedocs.io/en/v2.0.0/modules/ppo.html" target="_blank" rel="noreferrer">Stable-Baselines3 — PPO</a></li>
+                </ul>
+              </div>
+              <div class="manual-source-group">
+                <h3>Runtime building blocks</h3>
+                <ul>
+                  <li><a href="https://pyodide.org/en/0.23.0/usage/downloading-and-deploying.html" target="_blank" rel="noreferrer">Pyodide (0.23-series deployment)</a></li>
+                  <li><a href="https://onnxruntime.ai/docs/tutorials/web/" target="_blank" rel="noreferrer">ONNX Runtime Web</a></li>
+                  <li><a href="https://pypi.org/project/pypybox2d/2.1-r331/" target="_blank" rel="noreferrer">PyPyBox2D 2.1-r331 (Ken Lauer)</a></li>
+                  <li><a href="https://box2d.org/" target="_blank" rel="noreferrer">Box2D (physics engine)</a></li>
+                </ul>
+              </div>
+              <div class="manual-source-group">
+                <h3>Contender sources</h3>
+                <ul id="manual-contender-links"></ul>
+              </div>
+            </section>
+
+            <section>
+              <h2>A note on physics</h2>
+              <p>Sandbox physics. Scores are this cabinet's, not the official leaderboard. Contenders trained on native Box2D 2.3 may transfer imperfectly to the browser's older Box2D 2.1-era solver.</p>
+            </section>
+
+            <section>
+              <h2>Credits</h2>
+              <p>PyPyBox2D by Ken Lauer · Box2D · Pyodide · ONNX Runtime · Gymnasium · Stable-Baselines3. Every contender keeps credit to its original author and repository.</p>
+              <p class="manual-note">The Xinli Yu / RL-Projects model has no license file in its source repository.</p>
+            </section>
+          </article>
+        </div>
+        <footer class="manual-foot">
+          <a class="manual-source-link" href="https://github.com/jpeckenpaugh/rl-livive-net" target="_blank" rel="noreferrer">Source on GitHub ↗</a>
+          <button id="about-close-foot" class="cab-btn manual-close-btn" type="button"><b>CLOSE</b></button>
+        </footer>
+      </div>
+    </div>
     </div><!-- /stage -->
     <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
     <script src="src/main.js" type="module"></script>

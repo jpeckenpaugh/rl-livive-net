@@ -17,14 +17,14 @@ export const ATTRACT_RESTART_DELAY_MS = 1800;
 export const ATTRACT_RETRY_DELAY_MS = 6000;
 export const PLACE_LABELS = ["1st", "2nd", "3rd", "4th"];
 
-export const SCREEN_NAMES = ["boot", "attract", "menu", "solomode", "pilotselect", "solo", "mode", "players", "mods", "roundintro", "match", "win", "lose", "cup", "about"];
+export const SCREEN_NAMES = ["boot", "attract", "menu", "solomode", "pilotselect", "solo", "mode", "players", "mods", "roundintro", "match", "win", "lose", "cup"];
 
 // Screen -> song. Menu sub-screens share one theme; every other screen has its
 // own. showScreen() is the single place that applies this map.
 export const SCREEN_TRACKS = {
   boot: "boot",
   attract: "attract",
-  menu: "menu", solomode: "menu", pilotselect: "menu", mode: "menu", players: "menu", mods: "menu", about: "menu",
+  menu: "menu", solomode: "menu", pilotselect: "menu", mode: "menu", players: "menu", mods: "menu",
   solo: "solo",
   roundintro: "roundintro",
   match: "match",
@@ -47,4 +47,4 @@ export const TITLE_PANELS = {
   mods: "title-panel-houserules",
 };
 
-export const MENU_SCREENS = new Set(["attract", "menu", "solomode", "pilotselect", "mode", "players", "mods", "cup", "lose", "about"]);
+export const MENU_SCREENS = new Set(["attract", "menu", "solomode", "pilotselect", "mode", "players", "mods", "cup", "lose"]);

@@ -23,6 +23,7 @@ import {
 } from "./match.js";
 import { renderHazardGrid, openMods, defaultModelFor, selectCabinetMode, resetMenuFocus, handleMenuKey } from "./ui.js";
 import { attractDemoFrame, rotateAttractTagline, resetAttractDemo } from "./attract.js";
+import { initManual, renderManual, isManualOpen } from "./manual.js";
 
 /* ============================================================================
  * MAIN LOOP
@@ -84,6 +85,7 @@ async function boot() {
   showScreen("boot");
   setStatus("ROLLING OUT THE PILOTS");
   await loadCatalog();
+  renderManual();
   populateSoloPilots();
   await new Promise((r) => setTimeout(r, 1200));
   showScreen("attract");
@@ -254,7 +256,7 @@ function wireEvents() {
   // Flight controls: held arrow keys. Menu screens own the arrow keys for
   // navigation, so skip them here and let native select/input work.
   window.addEventListener("keydown", (event) => {
-    if (MENU_SCREENS.has(state.currentScreenName)) return;
+    if (isManualOpen() || MENU_SCREENS.has(state.currentScreenName)) return;
     const tag = document.activeElement ? document.activeElement.tagName : "";
     if (tag === "SELECT" || tag === "INPUT" || tag === "TEXTAREA") return;
     if (["ArrowLeft", "ArrowRight", "ArrowUp"].includes(event.code)) {
@@ -267,6 +269,7 @@ function wireEvents() {
   window.addEventListener("blur", () => pressed.clear());
 
   window.addEventListener("keydown", (e) => {
+    if (isManualOpen()) return;
     if (state.currentScreenName === "solo" && soloResultVisible()) {
       if (e.code === "ArrowUp") { cancelSoloAutoCountdown(); e.preventDefault(); moveResultFocus(-1); return; }
       if (e.code === "ArrowDown") { cancelSoloAutoCountdown(); e.preventDefault(); moveResultFocus(1); return; }
@@ -314,5 +317,6 @@ function rematch() {
 }
 
 wireEvents();
+initManual();
 requestAnimationFrame(frame);
 boot();
