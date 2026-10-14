@@ -14,8 +14,9 @@ import json
 import sys
 from pathlib import Path
 
-# id -> label / author / algorithm / role / source. Only the five pilots listed
-# in the branding spec (AIA-8) may appear; do not invent new sources.
+# id -> label / author / algorithm / role / source. Every bundled pilot is
+# listed here; About renders its roster from this manifest, so adding a
+# contender (a folder under models/contenders/) updates the page automatically.
 ATTRIBUTION = {
     "ppo": {
         "label": "jpeckenpaugh sb3 PPO",
