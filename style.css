@@ -101,6 +101,8 @@ a { color: var(--gold); }
   min-height: 32px;
 }
 .music-toggle:hover { border-color: var(--gold); }
+/* Announcer voice toggle sits just left of the music toggle. */
+.voice-toggle { right: 96px; }
 
 .cabinet-screen {
   margin-top: 10px;

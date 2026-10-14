@@ -1,0 +1,97 @@
+{
+  "sampleRate": 8000,
+  "bits": 8,
+  "sourceSampleRate": 22050,
+  "lines": {
+    "coin": {
+      "file": "coin.wav",
+      "text": "Insert coin.",
+      "duration": 0.755,
+      "rms": 0.23
+    },
+    "select": {
+      "file": "select.wav",
+      "text": "Choose your pilot.",
+      "duration": 1.149,
+      "rms": 0.197
+    },
+    "round_one": {
+      "file": "round_one.wav",
+      "text": "Round one.",
+      "duration": 0.638,
+      "rms": 0.2413
+    },
+    "round_two": {
+      "file": "round_two.wav",
+      "text": "Round two.",
+      "duration": 0.836,
+      "rms": 0.1886
+    },
+    "round_three": {
+      "file": "round_three.wav",
+      "text": "Final round.",
+      "duration": 0.801,
+      "rms": 0.2015
+    },
+    "fight": {
+      "file": "fight.wav",
+      "text": "Fight!",
+      "duration": 0.219,
+      "rms": 0.2164
+    },
+    "perfect": {
+      "file": "perfect.wav",
+      "text": "Perfect!",
+      "duration": 0.508,
+      "rms": 0.1695
+    },
+    "flawless": {
+      "file": "flawless.wav",
+      "text": "Flawless victory!",
+      "duration": 0.939,
+      "rms": 0.1926
+    },
+    "ko": {
+      "file": "ko.wav",
+      "text": "K. O.!",
+      "duration": 0.343,
+      "rms": 0.2632
+    },
+    "you_win": {
+      "file": "you_win.wav",
+      "text": "You win!",
+      "duration": 0.43,
+      "rms": 0.264
+    },
+    "you_lose": {
+      "file": "you_lose.wav",
+      "text": "You lose.",
+      "duration": 0.648,
+      "rms": 0.2659
+    },
+    "game_over": {
+      "file": "game_over.wav",
+      "text": "Game over.",
+      "duration": 0.886,
+      "rms": 0.1925
+    },
+    "new_challenger": {
+      "file": "new_challenger.wav",
+      "text": "New challenger!",
+      "duration": 0.77,
+      "rms": 0.2341
+    },
+    "time_up": {
+      "file": "time_up.wav",
+      "text": "Time up!",
+      "duration": 0.516,
+      "rms": 0.2248
+    },
+    "take_off": {
+      "file": "take_off.wav",
+      "text": "Take off!",
+      "duration": 0.559,
+      "rms": 0.258
+    }
+  }
+}

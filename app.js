@@ -183,6 +183,12 @@ const Sound = (() => {
   let unlocked = false;
   let musicTimer = null;
   let musicStep = 0;
+  // 1990s-arcade announcer voice pack (8-bit / 8 kHz callouts). Cosmetic only:
+  // every path here fails soft so a missing clip or locked audio never breaks play.
+  const VOICE_NAMES = ["coin", "select", "round_one", "round_two", "round_three", "fight", "perfect", "flawless", "ko", "you_win", "you_lose", "game_over", "new_challenger", "time_up", "take_off"];
+  const voiceClips = new Map();
+  let voicesOn = true;
+  let voicesLoaded = false;
 
   function ensure() {
     if (!ctx) {
@@ -256,16 +262,57 @@ const Sound = (() => {
     if (!c) return;
     unlocked = true;
     if (musicOn) startMusic();
+    loadVoices();
   }
   function toggleMusic() {
     musicOn = !musicOn;
     if (musicOn) { ensure(); startMusic(); } else stopMusic();
     return musicOn;
   }
+  // Preload the announcer clips after the first user gesture so the browser
+  // autoplay policy is already satisfied when voice() calls play().
+  function loadVoices() {
+    if (voicesLoaded || typeof Audio === "undefined") return;
+    voicesLoaded = true;
+    for (const name of VOICE_NAMES) {
+      try {
+        const clip = new Audio();
+        clip.preload = "auto";
+        clip.addEventListener("error", () => voiceClips.delete(name));
+        clip.src = new URL(`assets/voice/${name}.wav`, document.baseURI).href;
+        clip.load();
+        voiceClips.set(name, clip);
+      } catch (err) { voiceClips.delete(name); }
+    }
+  }
+  // Play a named callout. No-ops when the voice layer is off, audio is still
+  // locked, or the clip is missing/undecodable.
+  function voice(name) {
+    if (!unlocked || !voicesOn) return;
+    const clip = voiceClips.get(name);
+    if (!clip) return;
+    try {
+      clip.currentTime = 0;
+      const played = clip.play();
+      if (played && typeof played.catch === "function") played.catch(() => {});
+    } catch (err) { /* fail soft */ }
+  }
+  function stopVoices() {
+    for (const clip of voiceClips.values()) {
+      try { clip.pause(); clip.currentTime = 0; } catch (err) { /* fail soft */ }
+    }
+  }
+  function toggleVoices() {
+    voicesOn = !voicesOn;
+    if (!voicesOn) stopVoices();
+    return voicesOn;
+  }
   return {
     unlock, sfx, toggleMusic, ensure, startMusic, stopMusic,
+    loadVoices, voice, toggleVoices,
     isOn: () => musicOn,
     isUnlocked: () => unlocked,
+    isVoicesOn: () => voicesOn,
     setEnabled(on) { musicOn = on; if (on) startMusic(); else stopMusic(); },
   };
 })();
@@ -814,6 +861,7 @@ function hazardIntroText() {
 function beginRound() {
   match.round += 1;
   match.roundSteps = 0;
+  Sound.voice(match.round >= 3 ? "round_three" : match.round === 2 ? "round_two" : "round_one");
   match.gravity = gravityFor(match.hazards);
   const seed = (match.seedBase + match.round * 2654435761) >>> 0;
   match.roundSeed = seed;
@@ -844,7 +892,7 @@ function runCountdown(done) {
   const el = $("roundintro-count");
   const tick = () => {
     if (n > 0) { if (el) el.textContent = String(n); Sound.sfx("countdown"); n -= 1; setTimeout(tick, 700); }
-    else { if (el) el.textContent = "GO"; Sound.sfx("go"); setTimeout(() => done(), 500); }
+    else { if (el) el.textContent = "GO"; Sound.voice("fight"); Sound.sfx("go"); setTimeout(() => done(), 500); }
   };
   tick();
 }
@@ -1029,6 +1077,13 @@ function showRoundResult(info) {
   if (cont) { cont.textContent = matchOver ? "RESULTS ▶" : "NEXT ROUND ▶"; cont.hidden = false; }
   if (currentScreenName !== "match") showScreen("match");
   showMatchBanner(true, matchOver);
+  // Announcer reacts to the round: clean human landing = flawless, any landing
+  // this round = perfect, otherwise the round ended in wrecks = K.O.
+  const roundSims = Object.values(match.simBySlot || {}).filter(Boolean);
+  const humanSim = match.humanSlot >= 0 ? match.simBySlot[match.humanSlot] : null;
+  const humanLanded = !!(humanSim && humanSim.outcome === "LANDED");
+  const anyLanded = roundSims.some((s) => s.outcome === "LANDED");
+  Sound.voice(!humanLost && humanLanded ? "flawless" : anyLanded ? "perfect" : "ko");
   if (!humanLost && info.winnerTeam !== -1) { Sound.sfx("land"); startConfetti($("match-confetti"), color); }
 }
 
@@ -1102,6 +1157,7 @@ function showWin(championSlot) {
   const tag = $("win-tagline");
   if (tag) tag.textContent = pick(TAGLINES.winnerMatch);
   showScreen("win");
+  Sound.voice("you_win");
   Sound.sfx("fanfare");
   requestAnimationFrame(() => startConfetti($("win-confetti"), champ.color));
 }
@@ -1131,6 +1187,8 @@ function showLose() {
       marginEl.textContent = `${match.stats[human.slot].total.toFixed(0)} pts · ${match.pilots[match.champion].shortName} took the cup`;
     }
   }
+  Sound.voice("you_lose");
+  setTimeout(() => Sound.voice("game_over"), 1200);
   Sound.sfx("lose");
   showScreen("lose");
 }
@@ -1205,6 +1263,8 @@ function openMods(context) {
   if (context === "round") {
     if (title) title.textContent = "ROUND MODIFIERS";
     if (chip) chip.textContent = `CUP · ROUND ${match.round + 1} OF ${match.totalRounds}`;
+    // Cup only: each pit stop past the opener introduces the next challenger.
+    if (match.round >= 1) Sound.voice("new_challenger");
   } else {
     if (title) title.textContent = "MATCH MODIFIERS";
     if (chip) chip.textContent = match.mode === "versus" ? "1 v 1 · BEST OF 3" : "2 v 2 · BEST OF 3";
@@ -1659,8 +1719,16 @@ function wireEvents() {
     Sound.sfx("menu");
   });
 
+  const voiceBtn = $("voice-toggle");
+  if (voiceBtn) voiceBtn.addEventListener("click", () => {
+    const on = Sound.toggleVoices();
+    voiceBtn.textContent = on ? "VOICE ON" : "VOICE OFF";
+    voiceBtn.setAttribute("aria-pressed", String(on));
+    Sound.sfx("menu");
+  });
+
   const start = $("start-game");
-  if (start) start.addEventListener("click", () => { Sound.unlock(); Sound.sfx("coin"); showScreen("menu"); });
+  if (start) start.addEventListener("click", () => { Sound.unlock(); Sound.sfx("coin"); Sound.voice("coin"); showScreen("menu"); });
 
   document.querySelectorAll("[data-screen]").forEach((btn) => {
     btn.addEventListener("click", () => { Sound.sfx("menu"); showScreen(btn.dataset.screen); });
@@ -1674,6 +1742,7 @@ function wireEvents() {
       for (let i = 0; i < slotCount; i++) playerModels.push(defaultModelFor(i, cabinetMode));
       renderPlayers();
       showScreen("players");
+      Sound.voice("select");
     });
   });
   const confirm = $("players-confirm");
@@ -1685,7 +1754,7 @@ function wireEvents() {
   const modsRec = $("mods-recommend");
   if (modsRec) modsRec.addEventListener("click", () => { if (match) { match.hazards = { ...HAZARD_KEYS, ...RECOMMENDED }; Sound.sfx("menu"); renderHazardGrid(); } });
   const modsBack = $("mods-back");
-  if (modsBack) modsBack.addEventListener("click", () => { Sound.sfx("menu"); renderPlayers(); showScreen("players"); });
+  if (modsBack) modsBack.addEventListener("click", () => { Sound.sfx("menu"); renderPlayers(); showScreen("players"); Sound.voice("select"); });
 
   const matchContinue = $("match-continue");
   if (matchContinue) matchContinue.addEventListener("click", () => { Sound.sfx("select"); continueAfterRound(); });
