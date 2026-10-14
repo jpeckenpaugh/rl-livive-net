@@ -4,71 +4,98 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#10151d" />
-    <title>About · Lunar Lander Policy Lab</title>
+    <title>Pilots &amp; Cabinet · Lunar Lander</title>
     <link rel="icon" href="./favicon.ico" sizes="any" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <main class="shell">
       <header class="topbar">
-        <a class="wordmark" href="./" aria-label="rl.livive.net home"><span class="mark">RL</span><span>livive<span class="muted">.net</span></span></a>
+        <a class="wordmark" href="./" aria-label="rl.livive.net home"><span class="mark">LL</span><span>livive<span class="muted">.net</span></span></a>
         <nav class="topnav" aria-label="Main navigation">
-          <span class="runtime"><i></i> THE EXPERIMENT</span>
-          <a href="https://github.com/jpeckenpaugh/rl-livive-net" target="_blank" rel="noreferrer">Source code <span aria-hidden="true">↗</span></a>
+          <span class="runtime"><i></i> THE CABINET</span>
+          <a href="https://github.com/jpeckenpaugh/rl-livive-net" target="_blank" rel="noreferrer">Cabinet source <span aria-hidden="true">↗</span></a>
           <a href="./">Back to the lander <span aria-hidden="true">↗</span></a>
         </nav>
       </header>
 
       <section class="about-intro">
-        <p class="eyebrow">LUNAR LANDER / POLICY LAB</p>
+        <p class="eyebrow">LUNAR LANDER</p>
         <h1>Who can <em>stick the landing?</em></h1>
-        <p class="lede">Compare a human pilot with a PPO-trained AI, then take over whenever you want. The experiment is about how the policy flies—and how human intervention changes the flight.</p>
+        <p class="lede">Four pilots share this pad — and you can be one of them. Take the stick yourself, tag in mid-flight, or let the machines duel. One question matters: who sticks the landing?</p>
       </section>
 
-      <section class="about-callout course-lineage" aria-label="Connection to the Hugging Face Deep RL Course">
+      <section class="about-callout course-lineage" aria-label="Where this cabinet came from">
         <span class="live-dot"></span>
-        <div><strong>From course exercise to cockpit</strong><p>This lab builds on the <a href="https://huggingface.co/learn/deep-rl-course/en/unit1/hands-on" target="_blank" rel="noreferrer">Hugging Face Deep RL Course Unit 1 hands-on</a>. The PPO checkpoint used here follows its LunarLander training-and-publishing workflow. This page runs <a href="https://huggingface.co/seekdepth/ppo-LunarLander-v2" target="_blank" rel="noreferrer">that published checkpoint</a> in the browser alongside a human pilot and a manual-override mode.</p></div>
+        <div><strong>From a course project to a cabinet</strong><p>This cabinet runs a pilot trained in the <a href="https://huggingface.co/learn/deep-rl-course/en/unit1/hands-on" target="_blank" rel="noreferrer">Hugging Face Deep RL Course (Unit 1 hands-on)</a> and published by seekdepth. We play it live in your browser — alongside four more pilots imported from other builders. <a href="https://huggingface.co/seekdepth/ppo-LunarLander-v2" target="_blank" rel="noreferrer">See the default pilot's checkpoint</a>.</p></div>
       </section>
 
-      <section class="about-grid" aria-label="The flight experiment">
+      <section class="about-grid" aria-label="The cabinet's flight modes">
         <article class="about-card">
-          <p class="eyebrow">01 / FLIGHT MODES</p>
-          <h2>Choose how to explore.</h2>
-          <p><strong>Human Pilot</strong> gives you direct control. <strong>AI Pilot</strong> lets the trained policy choose every action. <strong>Autopilot with Manual Override</strong> lets the AI fly until you intervene. <strong>Tournament</strong> runs four models head-to-head over ten identical seeded episodes, tracking placements, cumulative score, landings, and round wins.</p>
+          <p class="eyebrow">01 / PILOT MODES</p>
+          <h2>Four ways to fly.</h2>
+          <p><strong>Human Pilot</strong> hands you the stick. <strong>AI Pilot</strong> lets the machine fly solo. <strong>Autopilot + Override</strong> lets the AI fly until you grab the controls. <strong>Tournament</strong> pits four contenders against each other over identical courses, tracking score, wins, and clean landings.</p>
         </article>
         <article class="about-card">
-          <p class="eyebrow">02 / THE POLICY</p>
-          <h2>Eight values in. One action out.</h2>
-          <p>The PPO policy normally receives the lander’s current eight-value observation and chooses among four actions: coast, rotate left, fire the main engine, or rotate right. With Sensor Fault enabled, an AI decision may receive the previous physics-step observation instead. Thruster Fault can drop a requested thrust action or fire a thruster when coast was requested; it applies to human and AI commands. Both browser-only fault settings default to OFF, and telemetry continues to show the true state.</p>
-          <div class="action-key"><span>OBSERVATION</span><b>→</b><span>PPO / ONNX</span><b>→</b><span>ACTION</span></div>
+          <p class="eyebrow">02 / THE PILOTS</p>
+          <h2>Eight readings in. One move out.</h2>
+          <p>Every pilot reads the same eight cockpit readings and picks one move: coast, tilt left, fire the main engine, or tilt right. A Sensor Glitch can feed an AI the previous frame’s reading; a Thruster Glitch can drop a commanded burn or fire one when you coasted. Both faults are browser-only experiments, default OFF, and the gauges always show your true state.</p>
+          <div class="action-key"><span>READINGS</span><b>→</b><span>PILOT</span><b>→</b><span>MOVE</span></div>
         </article>
         <article class="about-card">
           <p class="eyebrow">03 / READING A FLIGHT</p>
-          <h2>A flight is one sample.</h2>
-          <p>Watch the lander, episode reward, and outcome together. The course tutorial evaluates across ten deterministic episodes; this page shows one interactive flight or four independent AI flights using a different physics solver and landing-completion rule. Fault settings are browser experiments, not part of the trained checkpoint or course evaluation. Treat each reward as an observation, not a reproduction of the course result.</p>
+          <h2>Every flight is one sample.</h2>
+          <p>Watch the lander, the score, and the outcome together. This cabinet uses its own physics solver and landing rule, so a score here is a sandbox score — watch it, enjoy it, don’t read it as an official leaderboard result.</p>
         </article>
       </section>
 
+      <p class="physics-caveat">Sandbox physics · scores are this cabinet’s, not the official leaderboard.</p>
+
+      <section class="pilot-roster" id="pilots" aria-label="Pilot roster">
+        <p class="eyebrow">PILOT ROSTER</p>
+        <h2>Five pilots. Five builders.</h2>
+        <p class="roster-sub">Each contender links to the source it came from.</p>
+        <ul class="roster-list">
+          <li class="roster-row">
+            <div class="roster-id"><b>seekdepth jpeckenpaugh</b><span class="roster-algo">PPO</span></div>
+            <span class="roster-role default">Default pilot</span>
+            <a class="roster-source" href="https://huggingface.co/seekdepth/ppo-LunarLander-v2" target="_blank" rel="noreferrer">Hugging Face <span aria-hidden="true">↗</span></a>
+          </li>
+          <li class="roster-row">
+            <div class="roster-id"><b>Miftakhov Dueling DDQN</b><span class="roster-algo">Dueling Double DQN</span></div>
+            <span class="roster-role">Contender</span>
+            <a class="roster-source" href="https://github.com/RMiftakhov/LunarLander-v2-drlnd" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+          </li>
+          <li class="roster-row">
+            <div class="roster-id"><b>Sanket DQN</b><span class="roster-algo">DQN</span></div>
+            <span class="roster-role">Contender</span>
+            <a class="roster-source" href="https://github.com/sanketsans/openAIenv" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+          </li>
+          <li class="roster-row">
+            <div class="roster-id"><b>khordoo n-step DQN</b><span class="roster-algo">n-step DQN</span></div>
+            <span class="roster-role">Contender</span>
+            <a class="roster-source" href="https://github.com/khordoo/Deep-Reinforcement-Learning-with-PyTorch" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+          </li>
+          <li class="roster-row">
+            <div class="roster-id"><b>cpow-89 Ext. DQN</b><span class="roster-algo">Extended DQN</span></div>
+            <span class="roster-role">Contender</span>
+            <a class="roster-source" href="https://github.com/cpow-89/Extended-Deep-Q-Learning-For-Open-AI-Gym-Environments" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+          </li>
+        </ul>
+      </section>
+
       <details class="implementation-note">
-        <summary>Implementation details &amp; credits</summary>
+        <summary>How the cabinet is built</summary>
         <div class="implementation-copy">
-          <p>The environment and physics run in Python through Pyodide 0.23.4. PyPyBox2D supplies the pure-Python rigid-body solver; a small Gymnasium-compatible shim provides the local environment interface. JavaScript draws the canvas, handles keyboard input, and runs ONNX inference using ONNX Runtime Web 1.19.2 with its WebAssembly CPU backend.</p>
+          <p>The environment and physics run in Python through Pyodide 0.23.4. PyPyBox2D supplies the pure-Python rigid-body solver; a small Gymnasium-compatible shim provides the local environment interface. JavaScript draws the canvas, handles keyboard input, and runs the pilots’ inference with ONNX Runtime Web 1.19.2 on its WebAssembly CPU backend.</p>
           <p>The port follows the classic LunarLander-v2 observation and reward structure but is not bit-for-bit identical to the native Box2D environment. It uses PyPyBox2D’s older Box2D 2.1-era solver and adds a settled-contact landing completion rule.</p>
+          <p>Reference material: the <a href="https://gymnasium.farama.org/v0.28.1/environments/box2d/lunar_lander/" target="_blank" rel="noreferrer">LunarLander-v2 environment</a>, the <a href="https://github.com/Farama-Foundation/Gymnasium/blob/v0.26.3/gymnasium/envs/box2d/lunar_lander.py" target="_blank" rel="noreferrer">adapted LunarLander source</a>, <a href="https://stable-baselines3.readthedocs.io/en/v2.0.0/modules/ppo.html" target="_blank" rel="noreferrer">Stable-Baselines3 PPO</a>, <a href="https://pyodide.org/en/0.23.0/usage/downloading-and-deploying.html" target="_blank" rel="noreferrer">Pyodide 0.23-series deployment</a>, and <a href="https://onnxruntime.ai/docs/tutorials/web/" target="_blank" rel="noreferrer">ONNX Runtime Web</a>.</p>
           <p class="credit">Physics engine: <a href="https://code.google.com/archive/p/pybox2d/" target="_blank" rel="noreferrer">PyPyBox2D</a> by Ken Lauer, from the <a href="https://pypi.org/project/pypybox2d/2.1-r331/" target="_blank" rel="noreferrer">2.1-r331 PyPI source release</a>. The wheel retains the upstream zlib license notice.</p>
         </div>
       </details>
 
-      <section class="sources" aria-label="References">
-        <p class="eyebrow">REFERENCES</p>
-        <a href="https://github.com/jpeckenpaugh/rl-livive-net" target="_blank" rel="noreferrer">Project source code <span aria-hidden="true">↗</span></a>
-        <a href="https://gymnasium.farama.org/v0.28.1/environments/box2d/lunar_lander/" target="_blank" rel="noreferrer">LunarLander-v2 environment <span aria-hidden="true">↗</span></a>
-        <a href="https://stable-baselines3.readthedocs.io/en/v2.0.0/modules/ppo.html" target="_blank" rel="noreferrer">Stable-Baselines3 PPO <span aria-hidden="true">↗</span></a>
-        <a href="https://pyodide.org/en/0.23.0/usage/downloading-and-deploying.html" target="_blank" rel="noreferrer">Pyodide 0.23-series deployment <span aria-hidden="true">↗</span></a>
-        <a href="https://onnxruntime.ai/docs/tutorials/web/" target="_blank" rel="noreferrer">ONNX Runtime Web <span aria-hidden="true">↗</span></a>
-        <a href="https://github.com/Farama-Foundation/Gymnasium/blob/v0.26.3/gymnasium/envs/box2d/lunar_lander.py" target="_blank" rel="noreferrer">Adapted LunarLander source <span aria-hidden="true">↗</span></a>
-      </section>
-
-      <footer><span>LUNARLANDER-V2 · POLICY LAB</span><a href="./">Return to flight <span aria-hidden="true">↗</span></a></footer>
+      <footer><span>LUNAR LANDER · FOUR-PILOT CABINET</span><a href="./">Return to flight <span aria-hidden="true">↗</span></a></footer>
+      <p class="footer-caveat">Sandbox physics · scores are this cabinet’s, not the official leaderboard.</p>
     </main>
   </body>
 </html>

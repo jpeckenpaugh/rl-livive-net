@@ -25,8 +25,23 @@ let appliedAction = 0;
 let controllerMode = null;
 let controllerRequest = 0;
 const MODEL_FALLBACK = [
-  { id: "ppo", label: "PPO (Author)", url: "models/ppo-LunarLander-v2.onnx" },
+  {
+    id: "ppo",
+    label: "seekdepth jpeckenpaugh",
+    url: "models/ppo-LunarLander-v2.onnx",
+    author: "seekdepth",
+    algorithm: "PPO",
+    role: "default",
+    source: "https://huggingface.co/seekdepth/ppo-LunarLander-v2",
+  },
 ];
+const MODEL_SOURCES = {
+  ppo: "https://huggingface.co/seekdepth/ppo-LunarLander-v2",
+  miftakhov: "https://github.com/RMiftakhov/LunarLander-v2-drlnd",
+  sanket: "https://github.com/sanketsans/openAIenv",
+  khordoo: "https://github.com/khordoo/Deep-Reinforcement-Learning-with-PyTorch",
+  cpow: "https://github.com/cpow-89/Extended-Deep-Q-Learning-For-Open-AI-Gym-Environments",
+};
 let modelCatalog = [];
 let activeModelId = null;
 const modelSessions = new Map();
@@ -65,13 +80,13 @@ function status(message) {
 function reportFaultEvent(message) {
   const feedback = $("fault-feedback");
   if (!feedback) return;
-  feedback.textContent = `LAST FAULT EVENT · ${message}`;
+  feedback.textContent = `LAST GLITCH · ${message}`;
   feedback.classList.add("fault-active");
 }
 function clearFaultEvent() {
   const feedback = $("fault-feedback");
   if (!feedback) return;
-  feedback.textContent = "LAST FAULT EVENT · NONE";
+  feedback.textContent = "LAST GLITCH · NONE";
   feedback.classList.remove("fault-active");
 }
 function sensorFaultChance() {
@@ -85,7 +100,7 @@ function thrusterFaultChance() {
 function staleSensorObservation(observation, simulationIndex) {
   const chance = sensorFaultChance();
   if (chance > 0 && Math.random() < chance) {
-    reportFaultEvent(`SIM ${simulationIndex + 1} · STALE SENSOR SAMPLE`);
+    reportFaultEvent(`SIM ${simulationIndex + 1} · STALE SENSOR`);
     return sensorHistory[simulationIndex] || observation;
   }
   return observation;
@@ -272,7 +287,7 @@ function updateControllerButtons() {
   }
   const help = $("controller-help");
   help.hidden = controllerMode !== "override";
-  help.textContent = "AI flies by default. Hold ←/→ to rotate or ↑ to fire the engine; release to return control to AI.";
+  help.textContent = "The AI flies. Hold ←/→ to steer or ↑ for the main engine — let go and it takes back the stick.";
 }
 
 function controllerButton(mode) {
@@ -298,6 +313,10 @@ async function loadModelCatalog() {
       id: String(model.id),
       label: String(model.label || model.id),
       url: new URL(model.url, import.meta.url).href,
+      author: model.author ? String(model.author) : "",
+      algorithm: model.algorithm ? String(model.algorithm) : "",
+      role: model.role ? String(model.role) : "",
+      source: model.source ? String(model.source) : (MODEL_SOURCES[model.id] || ""),
     }));
   activeModelId = modelCatalog.length ? modelCatalog[0].id : null;
 }
@@ -308,6 +327,28 @@ function modelEntry(modelId) {
 function modelLabel(modelId) {
   const entry = modelEntry(modelId);
   return entry ? entry.label : modelId;
+}
+
+function updatePilotSource() {
+  const target = $("pilot-source");
+  if (!target) return;
+  const entry = modelEntry(activeModelId);
+  const source = entry && entry.source;
+  if (!entry || !source) {
+    target.hidden = true;
+    target.replaceChildren();
+    return;
+  }
+  target.hidden = false;
+  const label = document.createElement("span");
+  label.className = "pilot-source-label";
+  label.textContent = "PILOT SOURCE";
+  const link = document.createElement("a");
+  link.href = source;
+  link.target = "_blank";
+  link.rel = "noreferrer";
+  link.textContent = `↗ ${entry.label}`;
+  target.replaceChildren(label, link);
 }
 
 function populateModelSelectors() {
@@ -325,6 +366,7 @@ function populateModelSelectors() {
   }
   const singleField = $("model-select-field");
   if (singleField) singleField.hidden = modelCatalog.length < 2;
+  updatePilotSource();
 
   const slots = [...document.querySelectorAll(".tourn-model")];
   slots.forEach((select, index) => {
@@ -423,7 +465,7 @@ async function chooseController(mode) {
       button.disabled = false;
       if (request === controllerRequest) {
         stateLabel.textContent = "RETRY";
-        status("POLICY LOAD ERROR");
+        status("THIS PILOT WON'T BOOT");
       } else {
         stateLabel.textContent = modelSessions.has(activeModelId) ? "READY" : "SELECT";
       }
@@ -477,7 +519,7 @@ function updateTelemetry() {
 async function resetEpisode() {
   if (!pyodide || busy) return;
   if (!controllerMode) {
-    status("SELECT A PILOT TO START");
+    status("PICK A PILOT TO START");
     return;
   }
   if (controllerMode === "tournament") return;
@@ -491,8 +533,8 @@ async function resetEpisode() {
     clearFaultEvent();
     stepAccumulator = 0;
     totalReward = 0; episode++;
-    $("episode").textContent = `EPISODE ${String(episode).padStart(2, "0")}`;
-    updateTelemetry(); draw(); status("READY · ENVIRONMENT RUNNING"); hideOverlay();
+    $("episode").textContent = `FLIGHT ${String(episode).padStart(2, "0")}`;
+    updateTelemetry(); draw(); status("FLIGHT LIVE"); hideOverlay();
     $("reset").disabled = false; running = true;
   } catch (error) { showError(error); }
   finally { busy = false; }
@@ -541,7 +583,7 @@ async function resetTournamentEnvs(seed) {
 }
 
 async function startTournament() {
-  if (!pyodide) { status("RUNTIME STILL LOADING"); return; }
+  if (!pyodide) { status("CABINET STILL WARMING UP"); return; }
   const slots = [...document.querySelectorAll(".tourn-model")];
   const competitors = slots.map((select) => select.value);
   const rounds = Number($("tournament-rounds").value) || 10;
@@ -549,8 +591,8 @@ async function startTournament() {
   controllerMode = "tournament";
   for (let i = 0; i < multiSimulations.length; i++) multiSimulations[i].modelId = competitors[i];
 
-  status("LOADING TOURNAMENT PILOTS");
-  overlay("Loading tournament pilots…", false, true);
+  status("ROLLING OUT THE CONTENDERS");
+  overlay("Rolling out the contenders…", false, true);
   try {
     await Promise.all(competitors.map((modelId) => ensureModelSession(modelId)));
   } catch (error) { showError(error); return; }
@@ -570,7 +612,7 @@ async function beginTournamentRound() {
   tournament.round += 1;
   $("tourn-round-num").textContent = tournament.round;
   $("tourn-rounds-total").textContent = tournament.totalRounds;
-  $("tourn-phase").textContent = `SEEDED #${TOURNAMENT_BASE_SEED + tournament.round} · IDENTICAL FOR ALL PILOTS`;
+  $("tourn-phase").textContent = `COURSE #${TOURNAMENT_BASE_SEED + tournament.round} · SAME FOR ALL CONTENDERS`;
   await resetTournamentEnvs(TOURNAMENT_BASE_SEED + tournament.round);
   tournament.phase = "running";
   tournament.pause = 0;
@@ -619,7 +661,7 @@ async function advanceTournamentStep() {
     simulation.reward += result.reward;
     if (result.terminated || result.truncated) {
       simulation.done = true;
-      if (result.truncated) simulation.outcome = "TIME LIMIT";
+      if (result.truncated) simulation.outcome = "TIME'S UP";
       else simulation.outcome = result.reward > 0 ? "LANDED" : "CRASHED";
     }
   }
@@ -650,7 +692,7 @@ function completeTournamentRound() {
     tournament.phase = "roundComplete";
     tournament.pause = ROUND_BREAK_SECONDS;
     running = false;
-    status(`ROUND ${tournament.round} COMPLETE · NEXT ROUND SOON`);
+    status(`ROUND ${tournament.round} DONE · NEXT ROUND SOON`);
   }
 }
 
@@ -690,14 +732,14 @@ function finishTournament() {
   const label = (entry) => escapeHtml(modelLabel(entry.modelId));
   $("tournament-results").innerHTML = `
     <h2 class="results-title">TOURNAMENT COMPLETE</h2>
-    <p class="results-sub">${tournament.totalRounds} seeded rounds · 4 pilots · identical episodes</p>
+    <p class="results-sub">${tournament.totalRounds} rounds · 4 contenders · same course for all</p>
     <div class="result-cards">
-      <div class="result-card"><span class="result-tag">HIGHEST SCORE</span><b>${label(bestScore)}</b><small>${bestScore.reward.toFixed(0)} pts cumulative</small></div>
+      <div class="result-card"><span class="result-tag">HIGHEST SCORE</span><b>${label(bestScore)}</b><small>${bestScore.reward.toFixed(0)} points total</small></div>
       <div class="result-card"><span class="result-tag">MOST WINS</span><b>${label(bestWins)}</b><small>${bestWins.wins} round wins</small></div>
-      <div class="result-card"><span class="result-tag">MOST LANDS</span><b>${label(bestLands)}</b><small>${bestLands.lands} successful landings</small></div>
+      <div class="result-card"><span class="result-tag">CLEANEST LANDINGS</span><b>${label(bestLands)}</b><small>${bestLands.lands} successful landings</small></div>
     </div>
     <table class="results-table">
-      <thead><tr><th>#</th><th>Pilot</th><th>Total</th><th>Wins</th><th>Lands</th><th>Rounds (place)</th></tr></thead>
+      <thead><tr><th>#</th><th>Contender</th><th>Score</th><th>Wins</th><th>Lands</th><th>Rounds (finish)</th></tr></thead>
       <tbody>${rows.map((stats, index) => `
         <tr><td>${index + 1}</td><td>${label(stats)}</td><td>${stats.reward.toFixed(0)}</td><td>${stats.wins}</td><td>${stats.lands}</td>
         <td class="place-cells">${stats.placements.map((place) => `<i class="p${place}">${place}</i>`).join("")}</td></tr>`).join("")}
@@ -716,10 +758,10 @@ function escapeHtml(value) {
 
 /* --------------------------------------------------------------- errors */
 function showError(error) {
-  running = false; busy = false; status("RUNTIME ERROR");
+  running = false; busy = false; status("CABINET FAULT");
   const message = String(error?.message || error).split("\n").slice(-5).join(" ");
   if (controllerMode === "tournament") {
-    $("multi-error").textContent = message;
+    $("multi-error").textContent = `CABINET FAULT · ${message}`;
     $("multi-error").hidden = false;
   } else {
     overlay(message, true);
@@ -773,8 +815,8 @@ async function frame(now) {
       return;
     }
     const seconds = autoResetRemaining.toFixed(1);
-    status(`NEXT AI FLIGHT IN ${seconds}s`);
-    $("message").textContent = `Episode ended · ${totalReward.toFixed(1)} points · next flight in ${seconds}s`;
+    status(`NEXT FLIGHT IN ${seconds}s`);
+    $("message").textContent = `Flight over · ${totalReward.toFixed(1)} points · next flight in ${seconds}s`;
   }
   if (!running) {
     stepAccumulator = 0;
@@ -816,11 +858,11 @@ async function frame(now) {
       stepAccumulator = 0;
       if (controllerMode === "policy") {
         autoResetRemaining = AUTO_RESET_DELAY_SECONDS;
-        status(`NEXT AI FLIGHT IN ${AUTO_RESET_DELAY_SECONDS.toFixed(1)}s`);
-        overlay(`Episode ended · ${totalReward.toFixed(1)} points · next flight in ${AUTO_RESET_DELAY_SECONDS.toFixed(1)}s`);
+        status(`NEXT FLIGHT IN ${AUTO_RESET_DELAY_SECONDS.toFixed(1)}s`);
+        overlay(`Flight over · ${totalReward.toFixed(1)} points · next flight in ${AUTO_RESET_DELAY_SECONDS.toFixed(1)}s`);
       } else {
-        status(terminalResult.terminated ? "EPISODE COMPLETE" : "TIME LIMIT REACHED");
-        overlay(`Episode ended · ${totalReward.toFixed(1)} points · reset to fly again`);
+        status(terminalResult.terminated ? "FLIGHT COMPLETE" : "TIME'S UP");
+        overlay(`Flight over · ${totalReward.toFixed(1)} points · reset to fly again`);
       }
       $("reset").disabled = false;
     }
@@ -870,6 +912,7 @@ $("override-controller").addEventListener("click", () => chooseController("overr
 $("model-select").addEventListener("change", (event) => {
   activeModelId = event.currentTarget.value;
   updateControllerButtons();
+  updatePilotSource();
   if (pyodide && controllerMode && controllerMode !== "human") {
     ensureModelSession(activeModelId).catch((error) => showError(error));
   }
@@ -899,17 +942,17 @@ updateControllerButtons();
 async function start() {
   try {
     showScreen("title");
-    status("LOADING AI MODELS"); overlay("Discovering AI models…", false, true);
+    status("ROLLING OUT THE PILOTS…"); overlay("Rolling out the pilots…", false, true);
     await loadModelCatalog();
     populateModelSelectors();
     updateControllerButtons();
-    status("LOADING PYTHON RUNTIME"); overlay("Loading Pyodide…", false, true);
+    status("WARMING UP THE CABINET…"); overlay("Warming up the cabinet…", false, true);
     pyodide = await loadPyodide({ indexURL: `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/` });
-    status("LOADING PYTHON PACKAGES"); overlay("Loading NumPy and the physics engine…", false, true);
+    status("CALIBRATING FLIGHT PHYSICS…"); overlay("Calibrating flight physics…", false, true);
     await pyodide.loadPackage(["numpy", "micropip"]);
     const wheelBase = new URL("./third_party/wheels/", window.location.href);
     await installWheel(new URL("pypybox2d-2.1.post331-py3-none-any.whl", wheelBase).href);
-    status("LOADING LUNAR LANDER"); overlay("Loading the Lunar Lander environment…", false, true);
+    status("RAISING THE LANDING PAD…"); overlay("Raising the landing pad…", false, true);
     const appWheel = new URL("./packages/lunarlander_gym_shim-0.1.0-py3-none-any.whl", window.location.href);
     await installWheel(appWheel.href);
     await pyodide.runPythonAsync(`
@@ -969,7 +1012,7 @@ async function prepareEnvironment() {
     state = readPythonJson("reset_json()");
     totalReward = 0;
     updateTelemetry(); draw(); hideOverlay();
-    status("READY · CHOOSE A MODE");
+    status("CABINET READY · PICK A PILOT");
     $("human-controller").disabled = false;
     $("policy-controller").disabled = false;
     $("override-controller").disabled = false;

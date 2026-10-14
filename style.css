@@ -164,3 +164,61 @@ footer{align-items:center;gap:18px}footer b{color:var(--lime);font-weight:400}fo
 .options-gap small{color:#6f7c88;letter-spacing:0;text-transform:none;font-size:9px}
 .options-card .fault-controls{padding:0}
 @media(max-width:600px){.options-card{padding:18px}}
+
+/* ============================================================= */
+/* Cabinet revamp: tokens, marquee/bezel, roster, accessibility   */
+/* (branding spec AIA-8 §5)                                       */
+/* ============================================================= */
+:root{
+  --fs-marquee:clamp(52px,11vw,104px);--fs-h1:26px;--fs-h2:20px;--fs-body:14px;--fs-label:9px;--fs-micro:8px;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px;--space-12:48px;--space-16:64px;
+  --shell-pad:32px;
+}
+
+/* Cabinet treatment: marquee glow + recessed screen bezel */
+.title-word{text-shadow:0 0 24px #c7f36b33}
+.title-hero{box-shadow:inset 0 0 0 2px #ffffff08,0 24px 70px #0006}
+.screen-wrap{box-shadow:inset 0 1px 0 #ffffff0f}
+.multi-sim-card{box-shadow:inset 0 1px 0 #ffffff08}
+
+/* FREE PLAY badge + cabinet plate */
+.freeplay-badge{display:inline-block;padding:5px 12px;border:1px solid var(--lime);border-radius:999px;background:#c7f36b0f;font-size:var(--fs-label);letter-spacing:.16em}
+.cabinet-plate{position:relative;margin:var(--space-3) 0 0;color:#9ba8b5;font:500 11px 'DM Mono',monospace;letter-spacing:.28em}
+
+/* Pilot source caption under the PILOT select */
+.pilot-source{display:flex;align-items:center;gap:var(--space-2);margin:0;color:#8794a1;font:var(--fs-micro) 'DM Mono',monospace;letter-spacing:.08em}
+.pilot-source[hidden]{display:none}
+.pilot-source .pilot-source-label{color:#6f7c88}
+.pilot-source a{color:#cbd5dd;text-decoration:none;letter-spacing:.02em}
+.pilot-source a:hover{color:var(--lime)}
+
+/* Physics caveat (visible, not collapsed) */
+.physics-caveat{margin:var(--space-4) 0 var(--space-6);padding:var(--space-3) var(--space-4);border:1px solid #3a4935;border-radius:4px;background:#161f1a;color:var(--lime);font:var(--fs-label) 'DM Mono',monospace;letter-spacing:.06em}
+.footer-caveat{margin:-16px 2px 26px;color:#8794a1;font:var(--fs-micro) 'DM Mono',monospace;letter-spacing:.04em}
+
+/* Pilot roster (About, #pilots) */
+.pilot-roster{margin:var(--space-2) 0 var(--space-6);padding:var(--space-6);border:1px solid #2c3947;border-radius:6px;background:linear-gradient(150deg,#18212b,#131a23)}
+.pilot-roster h2{font:500 22px 'Space Grotesk',sans-serif;letter-spacing:-.5px;margin:0 0 var(--space-2)}
+.roster-sub{color:#9ba8b5;font-size:13px;margin:0 0 var(--space-4)}
+.roster-list{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-2)}
+.roster-row{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:var(--space-3);padding:var(--space-3) 14px;border:1px solid #26313d;border-radius:4px;background:#141c25}
+.roster-id{display:grid;gap:3px;min-width:0}
+.roster-id b{font:600 14px 'Space Grotesk',sans-serif;color:#e7edf0}
+.roster-algo{color:#8794a1;font:var(--fs-label) 'DM Mono',monospace;letter-spacing:.06em}
+.roster-role{font:var(--fs-micro) 'DM Mono',monospace;letter-spacing:.1em;color:#8794a1;padding:4px 8px;border:1px solid #34414d;border-radius:2px;white-space:nowrap}
+.roster-role.default{color:var(--lime);border-color:#72864e}
+.roster-source{color:#cbd5dd;text-decoration:none;font:var(--fs-label) 'DM Mono',monospace;letter-spacing:.06em;white-space:nowrap}
+.roster-source:hover{color:var(--lime)}
+@media(max-width:600px){.roster-row{grid-template-columns:1fr;gap:var(--space-2)}.pilot-roster{padding:18px}}
+
+/* Accessibility: focus-visible, touch targets, reduced motion */
+.menu-btn:focus-visible,.controller:focus-visible,.back-btn:focus-visible,.start-btn:focus-visible,#reset:focus-visible,.roster-source:focus-visible,.pilot-source a:focus-visible{outline:1px solid var(--lime);outline-offset:2px}
+@media(pointer:coarse){.controller{min-height:44px}.back-btn,.start-btn,#reset,.menu-btn{min-height:44px}}
+@media(prefers-reduced-motion:no-preference){
+  .live-dot{animation:livedot 2s ease-in-out infinite}
+  @keyframes livedot{0%,100%{opacity:1}50%{opacity:.35}}
+}
+@media(prefers-reduced-motion:reduce){
+  .menu-btn,.controller,.back-btn,.start-btn{transition:none}
+  .live-dot{animation:none}
+}
