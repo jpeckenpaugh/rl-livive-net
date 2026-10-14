@@ -761,13 +761,29 @@ const SCREEN_TRACKS = {
   lose: "lose",
   cup: "cup",
 };
+// The title, start menu, and multi-player sub-menu all share one layout: the
+// live demo background stays up and only the foreground panel swaps. They are
+// therefore panels inside #screen-attract, not separate cabinet screens.
+const TITLE_SCREENS = new Set(["attract", "menu", "mode"]);
+const TITLE_PANELS = { attract: "title-panel-attract", menu: "title-panel-menu", mode: "title-panel-mode" };
+function isTitleScreen(name) { return TITLE_SCREENS.has(name); }
 let currentScreenName = "boot";
 function showScreen(name) {
   if (!SCREEN_NAMES.includes(name)) name = "attract";
+  const title = isTitleScreen(name);
   for (const candidate of SCREEN_NAMES) {
     const el = $(`screen-${candidate}`);
-    if (el) el.hidden = candidate !== name;
+    if (!el) continue;
+    if (candidate === "attract") el.hidden = !title;
+    else if (candidate === "menu" || candidate === "mode") { /* rendered inside #screen-attract */ }
+    else el.hidden = candidate !== name;
   }
+  for (const key of Object.keys(TITLE_PANELS)) {
+    const panel = $(TITLE_PANELS[key]);
+    if (panel) panel.hidden = key !== name;
+  }
+  const attractScreen = $("screen-attract");
+  if (attractScreen) attractScreen.dataset.panel = name;
   currentScreenName = name;
   Sound.setTrack(SCREEN_TRACKS[name] || name);
   if (name !== "match" && name !== "solo") stopRunning();
@@ -2092,7 +2108,7 @@ async function attractStartEpisode(staticOnly = false) {
   }
 }
 async function attractDemoFrame(elapsedMs) {
-  if (currentScreenName !== "attract" || !simReady || attractDemo.busy) return;
+  if (!isTitleScreen(currentScreenName) || !simReady || attractDemo.busy) return;
   if (prefersReducedMotion()) {
     if (attractDemo.state) return;
     await attractStartEpisode(true);
@@ -2110,7 +2126,7 @@ async function attractDemoFrame(elapsedMs) {
     let steps = 0;
     while (steps < MAX_CATCH_UP_STEPS && attractDemo.running && attractDemo.accumulator >= STEP_INTERVAL_MS) {
       const action = (await chooseModelActions(attractDemo.pilotId, [attractDemo.prevObservation]))[0];
-      if (currentScreenName !== "attract") { attractDemo.running = false; break; }
+      if (!isTitleScreen(currentScreenName)) { attractDemo.running = false; break; }
       const before = Array.from(attractDemo.state.observation);
       attractDemo.action = action;
       const result = readPythonJson(`step_json(${action})`);
@@ -2148,9 +2164,9 @@ function frame(now) {
   lastFrame = now;
   updateConfetti(elapsed / 1000);
 
-  if (currentScreenName === "attract") {
+  if (isTitleScreen(currentScreenName)) {
     attractDemoFrame(elapsed);
-    if (now - attractTaglineAt > 3000) {
+    if (currentScreenName === "attract" && now - attractTaglineAt > 3000) {
       attractTaglineAt = now;
       attractTaglineIdx = (attractTaglineIdx + 1) % TAGLINES.attract.length;
       const el = $("attract-tagline"); if (el) el.textContent = TAGLINES.attract[attractTaglineIdx];
@@ -2360,7 +2376,8 @@ const MENU_SCREENS = new Set(["attract", "menu", "mode", "players", "mods", "cup
 let menuIndex = 0;
 
 function focusableItems() {
-  const screen = $(`screen-${currentScreenName}`);
+  // The start menu and multi-player sub-menu live inside #screen-attract.
+  const screen = isTitleScreen(currentScreenName) ? $("screen-attract") : $(`screen-${currentScreenName}`);
   if (!screen) return [];
   return Array.from(screen.querySelectorAll("button, a[href], select, input, [tabindex]:not([tabindex='-1'])"))
     .filter((el) => !el.disabled && !el.hidden && !el.closest("[hidden]"));

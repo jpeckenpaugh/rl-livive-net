@@ -255,13 +255,19 @@ a { color: var(--gold); }
 
 /* Flexible middle row. The stage sizes the screen to a fixed 3:2 frame and
    letterboxes it inside the available height, so every screen shares one
-   cabinet height and the frame never resizes to its contents. */
+   cabinet height and the frame never resizes to its contents. On fine pointers
+   the deck is gone, so a bottom pad equal to the marquee row keeps the monitor
+   visually centered in the cabinet instead of sitting under the header. */
 .cabinet-stage {
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
   place-items: center;
   container-type: size;
+  padding-bottom: 37px;
+}
+@media (pointer: coarse) {
+  .cabinet-stage { padding-bottom: 0; }
 }
 .cabinet-screen {
   width: 100%;
@@ -296,11 +302,9 @@ a { color: var(--gold); }
 .cabinet-screen > * { position: relative; z-index: 1; }
 
 /* ------------------------------------------------------- D3 control deck */
-/* P3-D follow-up F2: the deck row is ALWAYS reserved inside the fixed
-   cabinet box so `.cabinet-stage` (and therefore `.cabinet-screen`) keeps one
-   geometry on every pointer type. Only the deck's interactive contents are
-   revealed on `pointer:coarse`; the panel chrome stays put so mobile is a pure
-   scale of the same cabinet, never a reflow.
+/* The deck is a touch-only affordance. On fine pointers it is removed from the
+   flow entirely so the monitor fills and centers in the cabinet; on coarse
+   pointers it appears as the bottom bezel and the stage shrinks above it.
    AIA-39/F3 accepted-size decision: because the cabinet is a fixed 1060x740 box
    drawn at a pure scale (D5), on a 390x844 coarse pointer the whole cabinet —
    and the deck with it — renders at ~0.365x. Reaching the 44px touch guideline
@@ -309,7 +313,7 @@ a { color: var(--gold); }
    the sub-44px on-screen sizes are accepted (see AIA-39). Sizes are kept above
    the 24px WCAG 2.5.8 floor (RESET 68px cabinet -> ~24.8px on-screen). */
 .deck {
-  display: flex;
+  display: none;
   flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;
@@ -318,11 +322,10 @@ a { color: var(--gold); }
   border-bottom: 3px solid #1b2231;
   background: #121722;
 }
-.deck-joy { display: grid; justify-items: center; gap: 6px; }
-.deck-joy, .deck-buttons { visibility: hidden; }
 @media (pointer: coarse) {
-  .deck-joy, .deck-buttons { visibility: visible; }
+  .deck { display: flex; }
 }
+.deck-joy { display: grid; justify-items: center; gap: 6px; }
 .joy { position: relative; width: 168px; height: 108px; border: 3px solid #222c3c; background: #0c1018; }
 .joy .gate { position: absolute; inset: 14px 34px; border: 2px solid #2b3444; background: #070a10; }
 .joy .recess {
@@ -564,33 +567,50 @@ a { color: var(--gold); }
   height: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 26px;
+  gap: 14px;
+  padding: 20px 24px;
 }
-.attract-hero { text-align: center; padding-top: 6px; }
+/* The opening title owns the middle of the screen; the boards sit at the base. */
+.attract-hero {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+}
 .attract-eyebrow {
-  font: var(--type-micro)/1 var(--display);
-  letter-spacing: 1px;
+  font: var(--type-caption)/1 var(--display);
+  letter-spacing: 3px;
   color: var(--slate);
-  margin: 0 0 8px;
+  margin: 0;
 }
 .attract-title {
-  font: var(--type-title)/1.05 var(--display);
+  font: var(--type-giant)/0.95 var(--display);
   color: var(--gold);
-  margin: 0;
-  text-shadow: 3px 3px 0 #000;
+  margin: 8px 0 0;
+  letter-spacing: 4px;
+  text-shadow: 5px 5px 0 #000;
 }
 .attract-title em { color: var(--amber); font-style: normal; display: block; }
+/* Menu and sub-menu keep the title up but give the options room to breathe. */
+.attract-screen[data-panel="menu"] .attract-title,
+.attract-screen[data-panel="mode"] .attract-title { font-size: var(--type-mega); letter-spacing: 2px; }
+.attract-slot { width: min(100%, 620px); margin-top: 18px; }
+.title-panel { display: grid; justify-items: center; gap: 12px; }
+.title-panel[hidden] { display: none; }
+.title-panel .menu-stack { width: 100%; }
 .attract-tagline {
-  font: var(--type-body)/1.35 var(--display);
+  font: var(--type-subhead)/1.35 var(--display);
   color: var(--amber);
-  margin: 10px 0 0;
+  margin: 0;
   min-height: 1.35em;
   letter-spacing: 1px;
 }
 .coin-btn {
-  margin-top: 14px;
+  margin-top: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -617,6 +637,7 @@ a { color: var(--gold); }
   text-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
 }
 .attract-boards {
+  flex: 0 0 auto;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
@@ -671,14 +692,17 @@ a { color: var(--gold); }
 .between-reel[hidden] { display: none; }
 .attract-demo-loading {
   position: absolute;
-  top: 50%;
+  top: 10px;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
   z-index: 2;
   font-family: var(--display);
   font-size: var(--type-caption);
   letter-spacing: 2px;
   color: var(--slate);
+  background: rgba(10, 11, 16, 0.8);
+  border: 2px solid var(--line);
+  padding: 4px 10px;
   pointer-events: none;
   user-select: none;
 }

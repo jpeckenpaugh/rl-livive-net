@@ -67,11 +67,38 @@
             <div class="attract-hero">
               <p class="attract-eyebrow">FREE PLAY · TOURNAMENT EDITION</p>
               <h1 class="attract-title">LUNAR <em>LANDER</em></h1>
-              <p class="attract-tagline" id="attract-tagline">PRESS START TO FLY</p>
-              <button id="start-game" class="coin-btn" type="button">
-                <span class="coin-glyph" aria-hidden="true">◉</span> PRESS START
-              </button>
-              <span class="attract-demo-pilot" id="attract-demo-pilot">ATTRACT MODE</span>
+              <div class="attract-slot">
+                <div class="title-panel" id="title-panel-attract">
+                  <p class="attract-tagline" id="attract-tagline">PRESS START TO FLY</p>
+                  <button id="start-game" class="coin-btn" type="button">
+                    <span class="coin-glyph" aria-hidden="true">◉</span> PRESS START
+                  </button>
+                </div>
+                <div class="title-panel" id="title-panel-menu" hidden>
+                  <div class="menu-stack">
+                    <button class="cab-btn cab-btn-primary" data-screen="solo" type="button">
+                      <b>SINGLE PLAYER</b><span>solo flight training</span>
+                    </button>
+                    <button class="cab-btn cab-btn-primary" data-screen="mode" type="button">
+                      <b>MULTI-PLAYER</b><span>1v1 · 2v2 · 4-pilot cup</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="title-panel" id="title-panel-mode" hidden>
+                  <p class="attract-eyebrow">MULTI-PLAYER · CHOOSE MODE</p>
+                  <div class="menu-stack" id="mode-list">
+                    <button class="cab-btn cab-mode" data-mode="versus" type="button">
+                      <b>[P1 ■] VERSUS — 1 v 1</b><span>best of 3 · DEFAULT</span>
+                    </button>
+                    <button class="cab-btn cab-mode" data-mode="doubles" type="button">
+                      <b>[P2 ■] DOUBLES — 2 v 2</b><span>best of 3</span>
+                    </button>
+                    <button class="cab-btn cab-mode" data-mode="cup" type="button">
+                      <b>[P3 ■] CUP — 4 PILOTS</b><span>10 seeded rounds</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
             <div class="attract-boards">
               <div class="attract-panel">
@@ -88,21 +115,6 @@
               </div>
             </div>
           </div>
-        </section>
-
-        <!-- ============================= MENU ============================ -->
-        <section id="screen-menu" class="screen center-screen" hidden aria-label="Main menu">
-          <h2 class="screen-title">MAIN MENU</h2>
-          <div class="menu-stack">
-            <button class="cab-btn cab-btn-primary" data-screen="solo" type="button">
-              <b>SINGLE PLAYER</b><span>solo flight training</span>
-            </button>
-            <button class="cab-btn cab-btn-primary" data-screen="mode" type="button">
-              <b>TOURNAMENT</b><span>1v1 · 2v2 · 4-pilot cup</span>
-            </button>
-            <button class="cab-btn" data-screen="about" type="button"><b>ABOUT / CREDITS</b><span>the pilots &amp; the cabinet</span></button>
-          </div>
-          <p class="screen-foot">USE UP/DOWN · PRESS START</p>
         </section>
 
         <!-- ============================= SOLO ============================ -->
@@ -146,27 +158,6 @@
               <p id="pilot-source" class="pilot-source" hidden></p>
               <button id="solo-reset" class="cab-btn cab-btn-ghost" type="button" disabled>RESET ↻</button>
             </div>
-          </div>
-        </section>
-
-        <!-- ========================== MODE SELECT ======================== -->
-        <section id="screen-mode" class="screen center-screen" hidden aria-label="Select mode">
-          <div class="screen-head">
-            <button class="cab-btn cab-btn-ghost back-btn" data-screen="menu" type="button">← MENU</button>
-            <span class="screen-kicker">TOURNAMENT</span>
-          </div>
-          <h2 class="screen-title">SELECT MODE</h2>
-          <div class="menu-stack" id="mode-list">
-            <button class="cab-btn cab-mode" data-mode="versus" type="button">
-              <b>[P1 ■] VERSUS — 1 v 1</b><span>best of 3 · DEFAULT</span>
-            </button>
-            <button class="cab-btn cab-mode" data-mode="doubles" type="button">
-              <b>[P2 ■] DOUBLES — 2 v 2</b><span>best of 3</span>
-            </button>
-            <button class="cab-btn cab-mode" data-mode="cup" type="button">
-              <b>[P3 ■] CUP — 4 PILOTS</b><span>10 seeded rounds</span>
-            </button>
-            <button class="cab-btn cab-btn-ghost" data-screen="menu" type="button"><b>BACK</b><span>return to menu</span></button>
           </div>
         </section>
 
