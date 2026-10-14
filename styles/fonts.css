@@ -1,0 +1,123 @@
+/* ============================================================================
+ * LUNAR LANDER — TOURNAMENT EDITION
+ * Cabinet chrome: CRT bezel, marquee, coin door, color-coded windows.
+ *
+ * De-modernized for 90s arcade fidelity (P2-C in the visual-refinements doc):
+ *   - square corners everywhere (no border-radius)
+ *   - flat fills + chunky 1–4px borders (no gradient shading, no soft
+ *     shadows, no glows); hard 0-blur offsets stand in for depth
+ *   - discrete/stepped motion (no eased transitions)
+ *   - fixed pixel type ladder (no clamp(), no fluid type)
+ *   - locally bundled pixel fonts (no Google Fonts, no FOUT)
+ *   - fixed tinted values (no color-mix())
+ *   - CRT scanline overlay kept
+ * ==========================================================================*/
+
+/* --------------------------------------------------------- local pixel fonts */
+/* Bundled from Google Fonts (SIL Open Font License 1.1 — see OFL-*.txt).
+   Serving them ourselves removes the network dependency and the FOUT. */
+@font-face {
+  font-family: "Press Start 2P";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("assets/fonts/press-start-2p-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "VT323";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("assets/fonts/vt323-latin.woff2") format("woff2");
+}
+
+:root {
+  color-scheme: dark;
+  --gold: #E5B95C;
+  --amber: #FFF3C4;
+  --navy: #1A1E2E;
+  --void: #0A0B10;
+  --slate: #94A3B8;
+  --text: #e7edf0;
+  --muted: #8794a1;
+  --line: #283340;
+  --p1: #31E0F0;
+  --p2: #FF4FD8;
+  --p3: #C7F36B;
+  --p4: #FF9D5C;
+  --display: "Press Start 2P", monospace;
+  --body: "VT323", monospace;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  /* Fixed pixel type ladder — the ROM never scales type fluidly. Every size
+     below is a hard px step; no clamp(), no vw. */
+  --type-micro: 8px;
+  --type-tiny: 9px;
+  --type-caption: 10px;
+  --type-fine: 11px;
+  --type-small: 12px;
+  --type-body: 13px;
+  --type-body-lg: 14px;
+  --type-lead: 15px;
+  --type-subhead: 16px;
+  --type-head: 18px;
+  --type-title-sm: 20px;
+  --type-title: 22px;
+  --type-title-lg: 26px;
+  --type-display: 34px;
+  --type-mega: 54px;
+  --type-giant: 96px;
+  /* Fixed cabinet geometry (P3-D D5). The cabinet never reflows: the whole box
+     is scaled with `--cab-scale` and letterboxed in the viewport. Keep these in
+     sync with cabW/cabH read by `fitCabinet()` in src/render.js. */
+  --cab-w: 1060px;
+  --cab-h: 740px;
+  --side-w: 64px;
+  --cab-scale: 1;
+}
+
+* { box-sizing: border-box; }
+/* Single fixed frame: the document never scrolls — the cabinet owns the viewport. */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+body {
+  display: grid;
+  place-items: center;
+  background: radial-gradient(ellipse at 50% 0%, #121826 0%, #04050a 70%);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: var(--type-title-sm);
+  line-height: 1.25;
+  -webkit-font-smoothing: none;
+}
+/* P3-D D5: scale the whole fixed cabinet box and letterbox it. Pinned to the
+   viewport center so the (larger-than-viewport) box stays centered at any
+   scale — grid centering clamps an oversized item to the start edge. */
+.stage {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(var(--cab-scale, 1));
+  transform-origin: center center;
+}
+img, canvas { max-width: 100%; }
+/* Playfield canvases are sized by src/render.js `fitPixelCanvas` (whole-number
+ * display scale x devicePixelRatio). Keep them nearest-neighbour so pixels
+ * never blur when the browser maps or shrinks the backing store. */
+#attract-canvas, #solo-canvas, .multi-sim-card canvas {
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+  margin-inline: auto;
+}
+a { color: var(--gold); }
+

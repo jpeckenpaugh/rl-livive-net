@@ -1,0 +1,16 @@
+{
+  "fallback": [
+    {
+      "id": "ppo", "label": "jpeckenpaugh sb3 PPO", "url": "models/ppo-LunarLander-v2.onnx",
+      "author": "seekdepth", "algorithm": "PPO", "role": "default",
+      "source": "https://huggingface.co/seekdepth/ppo-LunarLander-v2"
+    }
+  ],
+  "sources": {
+    "ppo": "https://huggingface.co/seekdepth/ppo-LunarLander-v2",
+    "miftakhov": "https://github.com/RMiftakhov/LunarLander-v2-drlnd",
+    "sanket": "https://github.com/sanketsans/openAIenv",
+    "khordoo": "https://github.com/khordoo/Deep-Reinforcement-Learning-with-PyTorch",
+    "cpow": "https://github.com/cpow-89/Extended-Deep-Q-Learning-For-Open-AI-Gym-Environments"
+  }
+}

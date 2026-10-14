@@ -1,0 +1,49 @@
+{
+  "gravityDefault": -10.0,
+  "recommended": { "sensor": 2, "thruster": 2 },
+  "keys": { "sensor": 0, "thruster": 0, "wind": 0, "gravity": 0 },
+  "hazards": [
+    {
+      "key": "sensor", "name": "SENSOR GLITCH", "effect": "stale readings", "real": true,
+      "explain": "Your gauges freeze for a step; the pilot reads one stale reading.",
+      "levels": [
+        { "tag": "5%", "label": "5%", "rate": 0.05 },
+        { "tag": "10%", "label": "10%", "rate": 0.10 },
+        { "tag": "20%", "label": "20%", "rate": 0.20 }
+      ]
+    },
+    {
+      "key": "thruster", "name": "FAULTY THRUSTERS", "effect": "drop / misfire", "real": true,
+      "explain": "A commanded burn is dropped, or a coasting lander misfires.",
+      "levels": [
+        { "tag": "5%", "label": "5%", "rate": 0.05 },
+        { "tag": "10%", "label": "10%", "rate": 0.10 },
+        { "tag": "20%", "label": "20%", "rate": 0.20 }
+      ]
+    },
+    {
+      "key": "wind", "name": "WIND SHEAR", "effect": "sideways draft", "real": true,
+      "explain": "A side wind pushes every lander at the same time.",
+      "levels": [
+        { "tag": "MILD", "label": "MILD", "force": 0.7 },
+        { "tag": "STEADY", "label": "STEADY", "force": 1.4 },
+        { "tag": "GALE", "label": "GALE", "force": 2.1 }
+      ]
+    },
+    {
+      "key": "gravity", "name": "GRAVITY ADJUST", "effect": "pull changes", "real": true,
+      "explain": "Change the pull: lighter floats, heavier drops.",
+      "levels": [
+        { "tag": "LIGHT", "label": "LIGHT", "gravity": -8.0 },
+        { "tag": "FLOATY", "label": "FLOATY", "gravity": -6.5 },
+        { "tag": "HEAVY", "label": "HEAVY", "gravity": -12.0 },
+        { "tag": "CRUSHING", "label": "CRUSHING", "gravity": -14.5 }
+      ]
+    },
+    {
+      "key": "meteor", "name": "METEOR SHOWER", "effect": "incoming!", "real": false, "soon": true,
+      "explain": "Rocks across the descent corridor. Still in the workshop.",
+      "levels": []
+    }
+  ]
+}

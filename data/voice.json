@@ -1,0 +1,3 @@
+{
+  "fallback": ["coin", "select", "round_one", "round_two", "round_three", "fight", "perfect", "flawless", "ko", "you_win", "you_lose", "game_over", "new_challenger", "time_up", "take_off"]
+}

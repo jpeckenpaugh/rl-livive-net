@@ -68,6 +68,24 @@ license details. GitHub Actions builds the first-party wheel for Pages.
 
 The browser uses JavaScript canvas rendering and does not require pygame.
 
+### Project layout
+
+The browser app is a set of plain ES modules loaded directly by the page (no
+bundler):
+
+- `index.html` — static cabinet shell (screens, HUD, menus).
+- `style.css` — manifest that imports `styles/` (fonts, cabinet, screens, pages).
+- `src/main.js` — entry point: boot, event wiring, animation loop.
+- `src/config.js` — tunables and the screen registry.
+- `src/state.js` — shared mutable state.
+- `src/data.js` — loads the JSON tables from `data/` at boot.
+- `src/hazards.js`, `src/audio.js`, `src/render.js`, `src/models.js`,
+  `src/leaderboard.js`, `src/input.js` — feature modules.
+- `src/solo.js`, `src/match.js` — Solo Flight and Tournament engines.
+- `src/screens.js`, `src/ui.js`, `src/attract.js` — screen router, menus, attract demo.
+- `src/python.js` + `src/py/setup.py` — Pyodide bridge and Python bootstrap.
+- `data/*.json` — taglines, arenas, hazards, music tracks, model catalog, voice list.
+
 ### Trained policy
 
 The browser runs the Stable-Baselines3 policy as a small ONNX actor with

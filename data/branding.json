@@ -1,0 +1,41 @@
+{
+  "pilotColors": ["#31E0F0", "#FF4FD8", "#C7F36B", "#FF9D5C"],
+  "pilotTokens": ["--p1", "--p2", "--p3", "--p4"],
+  "taglines": {
+    "attract": [
+      "PRESS START TO FLY",
+      "ONLY ONE LANDS CLEAN.",
+      "SAME SKY. SAME HAZARDS. FLY CLEAN.",
+      "FOUR PILOTS. ONE PAD. NO MERCY."
+    ],
+    "roundCall": [
+      "PILOTS, TO YOUR PADS. ROUND {n}.",
+      "SAME SKY. SAME HAZARDS. FLY CLEAN.",
+      "READY? STICK IT.",
+      "NOBODY GETS AN EASY SKY."
+    ],
+    "winnerMatch": [
+      "STICKED THE LANDING.",
+      "TOUCHDOWN. CHAMPION.",
+      "THE PAD REMEMBERS.",
+      "CLEAN LANDING. FIRST PLACE."
+    ],
+    "winnerRoundClose": ["DIRTY MARGIN. CLEAN WIN.", "CLUTCH.", "BY A NOSE."],
+    "winnerRoundBig": ["RAN AWAY WITH IT.", "NO CONTEST.", "LEFT THEM IN ORBIT."],
+    "loser": [
+      "SO CLOSE YOU COULD SMELL THE REGOLITH.",
+      "DOWN IN FLAMES. TRY AGAIN.",
+      "THE PAD IS HARD. TRY AGAIN.",
+      "SHAKE IT OFF. NEXT ROUND.",
+      "CRASHED. LIKE THE KIT."
+    ]
+  },
+  "arenas": [
+    "SALVAGE STATION-04",
+    "MARE SERENITATIS",
+    "TYCHO RIM",
+    "SHACKLETON DEEP",
+    "OCEANUS PROCELLARUM",
+    "FRA MAURO BASIN"
+  ]
+}
