@@ -137,14 +137,20 @@
                     <p class="attract-eyebrow" id="mods-title">HOUSE RULES</p>
                     <p class="seed-chip" id="mods-seed">COURSE SEED — · LOCKED</p>
                   </div>
-                  <div class="menu-scroll">
-                    <div class="hazard-grid" id="mods-grid"></div>
+                  <div class="menu-stack menu-stack-tight" id="mods-accept-row">
+                    <button class="cab-btn cab-btn-primary" id="mods-accept" type="button"><b>ACCEPT</b></button>
+                    <button class="cab-btn" id="mods-customize" type="button"><b>CUSTOMIZE</b></button>
                   </div>
-                  <p class="loadout-summary" id="mods-summary">HAZARDS ARMED: 0 · DIFFICULTY ☆☆☆</p>
-                  <div class="menu-stack menu-stack-tight mods-actions">
-                    <button class="cab-btn cab-btn-ghost" id="mods-clear" type="button">CLEAR ALL</button>
-                    <button class="cab-btn cab-btn-ghost" id="mods-recommend" type="button">RECOMMENDED</button>
-                    <button class="cab-btn cab-btn-primary" id="mods-proceed" type="button">TO THE PAD ▶</button>
+                  <div id="mods-custom" hidden>
+                    <div class="menu-scroll">
+                      <div class="hazard-grid" id="mods-grid"></div>
+                    </div>
+                    <p class="loadout-summary" id="mods-summary">HAZARDS ARMED: 0 · DIFFICULTY ☆☆☆</p>
+                    <div class="menu-stack menu-stack-tight mods-actions">
+                      <button class="cab-btn cab-btn-ghost" id="mods-clear" type="button">CLEAR ALL</button>
+                      <button class="cab-btn cab-btn-ghost" id="mods-recommend" type="button">RECOMMENDED</button>
+                      <button class="cab-btn cab-btn-primary" id="mods-proceed" type="button">TO THE PAD ▶</button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -187,6 +193,7 @@
                 <p class="result-outcome" id="result-outcome">FLIGHT OVER</p>
                 <p class="result-score" id="result-score">0 pts</p>
                 <div class="result-stats" id="result-stats"></div>
+                <p class="result-auto" id="solo-result-auto"></p>
                 <div class="result-menu" id="result-menu">
                   <button id="result-next" class="cab-btn cab-btn-primary" type="button"><b>NEXT FLIGHT</b></button>
                   <button id="result-change-mode" class="cab-btn" type="button"><b>CHANGE MODE</b></button>

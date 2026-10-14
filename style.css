@@ -920,6 +920,13 @@ a { color: var(--gold); }
 .result-stat small { font: var(--type-micro)/1 var(--body); color: var(--muted); }
 .result-menu { display: grid; gap: 10px; }
 .result-menu .cab-btn { width: 100%; }
+.result-auto {
+  margin: 0 0 12px;
+  font: var(--type-fine)/1 var(--display);
+  letter-spacing: 2px;
+  color: var(--slate);
+  animation: blink 1s steps(2) infinite;
+}
 .result-options-panel { display: grid; gap: 12px; margin-top: 14px; }
 .result-options-panel[hidden] { display: none; }
 .result-audio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }

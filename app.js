@@ -575,8 +575,8 @@ function createCommentary(deps) {
     const have = deps.available();
     const required = (intent.require || []).filter(Boolean);
     if (required.length && !required.every((id) => have.has(id))) return pick(intent.fallback);
-    let ids = pick(intent.clips);
-    if (!ids.length) ids = pick(intent.fallback);
+    let ids = intent.clips && intent.clips.length ? pick(intent.clips) : [];
+    if (!ids.length) ids = intent.fallback && intent.fallback.length ? pick(intent.fallback) : [];
     return ids;
   }
   function subject(slot) { return (slot != null && slot >= 0 && slot < 4) ? `player_${slot + 1}` : null; }
@@ -644,9 +644,12 @@ function createCommentary(deps) {
   }
 
   // --- intent builders: read the gathered match context ----------------------
-  function roundStart(round) {
-    const clip = round >= 3 ? "round_three" : round === 2 ? "round_two" : "round_one";
-    return { event: "round_start", key: `round_start:${round}`, priority: PRIORITY.high, clips: [clip], fallback: [clip], coolDown: 0 };
+  function roundStart(round, totalRounds) {
+    // "Final round" only on the actual last round (cup round 10, best-of-3 round 3).
+    // Middle rounds stay silent (there is no generic round clip).
+    const isFinal = totalRounds ? round >= totalRounds : round >= 3;
+    const clip = round === 1 ? "round_one" : round === 2 ? "round_two" : isFinal ? "round_three" : null;
+    return { event: "round_start", key: `round_start:${round}`, priority: PRIORITY.high, clips: clip ? [clip] : [], fallback: [], coolDown: 0 };
   }
   function go() {
     return { event: "go", key: "go", priority: PRIORITY.high, clips: ["fight"], fallback: ["fight"], coolDown: 0 };
@@ -692,7 +695,7 @@ function createCommentary(deps) {
 
   return {
     say, stop,
-    roundStart: (round) => say(roundStart(round)),
+    roundStart: (round, totalRounds) => say(roundStart(round, totalRounds)),
     go: () => say(go()),
     line: (id, opts) => say(line(id, opts)),
     // The round result plays as a composed line, then any easter egg stands alone.
@@ -1185,9 +1188,35 @@ function showSoloResult(terminal, flightTime) {
   panel.hidden = false;
   resultFocusIndex = 0;
   setResultFocus();
+  startSoloAutoCountdown();
 }
 function hideSoloResult() {
+  cancelSoloAutoCountdown();
   const panel = $("solo-result"); if (panel) panel.hidden = true;
+}
+/* Flight Over auto-advances to the next flight after five seconds. Any move
+ * (arrow keys, a click) cancels it. */
+let soloAuto = { timer: null, remaining: 0 };
+function cancelSoloAutoCountdown() {
+  if (soloAuto.timer) { clearInterval(soloAuto.timer); soloAuto.timer = null; }
+}
+function updateSoloAutoPrompt() {
+  const el = $("solo-result-auto");
+  if (el) el.textContent = `NEXT FLIGHT IN ${soloAuto.remaining} · MOVE TO CANCEL`;
+}
+function startSoloAutoCountdown() {
+  cancelSoloAutoCountdown();
+  soloAuto.remaining = 5;
+  updateSoloAutoPrompt();
+  soloAuto.timer = setInterval(() => {
+    soloAuto.remaining -= 1;
+    if (soloAuto.remaining <= 0) {
+      cancelSoloAutoCountdown();
+      if (soloResultVisible()) { hideSoloResult(); requestSoloReset(); }
+      return;
+    }
+    updateSoloAutoPrompt();
+  }, 1000);
 }
 function resultItems() {
   const panel = $("solo-result");
@@ -1506,7 +1535,7 @@ function beginRound() {
   match.round += 1;
   match.roundSteps = 0;
   const betweenReel = $("between-reel"); if (betweenReel) betweenReel.hidden = true;
-  Commentary.roundStart(match.round);
+  Commentary.roundStart(match.round, match.totalRounds);
   match.gravity = gravityFor(match.hazards);
   const seed = (match.seedBase + match.round * 2654435761) >>> 0;
   match.roundSeed = seed;
@@ -2085,6 +2114,8 @@ function openMods(context) {
   }
   const seedEl = $("mods-seed");
   if (seedEl) seedEl.textContent = `${context === "round" ? "ROUND" : "COURSE"} SEED ${(match.seedBase % 100000)} · LOCKED`;
+  const acceptRow = $("mods-accept-row"); if (acceptRow) acceptRow.hidden = false;
+  const custom = $("mods-custom"); if (custom) custom.hidden = true;
   renderHazardGrid();
   showScreen("mods");
 }
@@ -2711,6 +2742,15 @@ function wireEvents() {
   });
   const confirm = $("players-confirm");
   if (confirm) confirm.addEventListener("click", () => { startMatchFromCabinet(); });
+  const modsAccept = $("mods-accept");
+  if (modsAccept) modsAccept.addEventListener("click", () => { Sound.sfx("select"); beginRound(); });
+  const modsCustomize = $("mods-customize");
+  if (modsCustomize) modsCustomize.addEventListener("click", () => {
+    Sound.sfx("menu");
+    const row = $("mods-accept-row"); if (row) row.hidden = true;
+    const custom = $("mods-custom"); if (custom) custom.hidden = false;
+    resetMenuFocus();
+  });
   const modsProceed = $("mods-proceed");
   if (modsProceed) modsProceed.addEventListener("click", () => { Sound.sfx("select"); beginRound(); });
   const modsClear = $("mods-clear");
@@ -2762,10 +2802,12 @@ function wireEvents() {
   if (resultChangeMode) resultChangeMode.addEventListener("click", () => { Sound.sfx("menu"); hideSoloResult(); showScreen("solomode"); });
   const resultChangePilot = $("result-change-pilot");
   if (resultChangePilot) resultChangePilot.addEventListener("click", () => { Sound.sfx("menu"); hideSoloResult(); renderPilotCards(); showScreen("pilotselect"); });
+  const soloResultEl = $("solo-result");
+  if (soloResultEl) soloResultEl.addEventListener("pointerdown", cancelSoloAutoCountdown);
   window.addEventListener("keydown", (e) => {
     if (currentScreenName === "solo" && soloResultVisible()) {
-      if (e.code === "ArrowUp") { e.preventDefault(); moveResultFocus(-1); return; }
-      if (e.code === "ArrowDown") { e.preventDefault(); moveResultFocus(1); return; }
+      if (e.code === "ArrowUp") { cancelSoloAutoCountdown(); e.preventDefault(); moveResultFocus(-1); return; }
+      if (e.code === "ArrowDown") { cancelSoloAutoCountdown(); e.preventDefault(); moveResultFocus(1); return; }
       if (e.code === "Enter" || e.code === "Space") {
         e.preventDefault();
         const items = resultItems();
