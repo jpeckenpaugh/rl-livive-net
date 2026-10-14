@@ -1,0 +1,128 @@
+/* ============================================================================
+ * LUNAR LANDER — BUILD YOUR OWN PILOT (UPLOAD OVERLAY)
+ * Extends the Cabinet Manual document styles (styles/manual.css) with code
+ * blocks, the upload drop zone, the test-flight histogram, the PASS/FAIL
+ * banner, and the installed-custom-pilot list.
+ * ==========================================================================*/
+
+/* -------------------------------------------------------------- code blocks */
+.manual-doc pre {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  background: #0a0e16;
+  border: 1px solid var(--line);
+}
+.manual-doc pre code {
+  display: block;
+  padding: 0;
+  background: none;
+  color: var(--amber);
+  font: 15px/1.5 var(--body);
+  white-space: pre;
+}
+
+/* --------------------------------------------------------------- drop zone */
+.build-upload { margin-top: 4px; }
+.build-drop {
+  margin: 0 0 12px;
+  padding: 22px 16px;
+  text-align: center;
+  background: #0a0e16;
+  border: 2px dashed #3a4658;
+  cursor: pointer;
+}
+.build-drop:hover, .build-drop:focus-within { border-color: var(--gold); }
+.build-drop.dragover { border-color: var(--gold); background: #121722; }
+.build-drop p { margin: 0; font-size: 17px; color: var(--muted); }
+.build-link {
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--gold);
+  text-decoration: underline;
+  font: inherit;
+  cursor: pointer;
+}
+.build-link:hover, .build-link:focus-visible { color: var(--amber); }
+
+.build-status { margin: 0 0 10px; font-size: 16px; color: var(--gold); }
+.build-error {
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  font-size: 16px;
+  color: #ffb3b3;
+  background: #2a1416;
+  border: 1px solid #6b2f2f;
+}
+
+/* --------------------------------------------------- test-flight histogram */
+.build-result { margin: 0 0 16px; }
+.build-banner {
+  padding: 8px 12px;
+  margin: 0 0 8px;
+  font: 10px/1.4 var(--display);
+  letter-spacing: 2px;
+  text-align: center;
+}
+.build-banner.pass { color: #7cf07c; background: #10241a; border: 1px solid #2f6b37; }
+.build-banner.fail { color: #ff8a8a; background: #241012; border: 1px solid #6b2f2f; }
+.build-summary { margin: 0 0 12px; font-size: 15px; color: var(--muted); }
+.build-hist { margin: 0 0 12px; }
+.build-hist-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 42px;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+.build-hist-label { color: var(--slate); }
+.build-hist-bar {
+  display: block;
+  height: 12px;
+  background: #0a0e16;
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.build-hist-bar i { display: block; height: 100%; background: var(--gold); }
+.build-hist-count { text-align: right; color: var(--text); }
+.build-hist-note { margin: 8px 0 0; font-size: 14px; color: var(--muted); }
+
+/* --------------------------------------------------------------- save form */
+.build-save { display: grid; gap: 10px; margin: 0 0 20px; }
+.build-field { display: grid; gap: 3px; font-size: 15px; color: var(--slate); }
+.build-field input {
+  padding: 7px 9px;
+  background: #0a0e16;
+  border: 1px solid #3a4658;
+  color: var(--text);
+  font: 16px/1.3 var(--body);
+}
+.build-field input:focus-visible { outline: none; border-color: var(--gold); }
+.build-save .cab-btn { justify-self: start; padding: 8px 18px; min-height: 0; }
+
+/* ---------------------------------------------------------- installed list */
+.build-installed-list { list-style: none; margin: 0 0 12px; padding: 0; }
+.build-installed-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 16px;
+}
+.build-installed-name { color: var(--text); }
+.build-installed-meta { color: var(--muted); font-size: 14px; }
+.build-installed-empty { font-size: 15px; color: var(--muted); }
+.build-remove {
+  padding: 5px 10px;
+  background: #0c1018;
+  border: 1px solid #3a4658;
+  color: #cfe3ee;
+  font: 9px/1 var(--display);
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+.build-remove:hover, .build-remove:focus-visible { border-color: #6b2f2f; color: #ff8a8a; }
