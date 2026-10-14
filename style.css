@@ -598,7 +598,9 @@ a { color: var(--gold); }
 /* Menu and sub-menu keep the title up but give the options room to breathe. */
 .attract-screen[data-panel="menu"] .attract-title,
 .attract-screen[data-panel="solomode"] .attract-title,
-.attract-screen[data-panel="mode"] .attract-title { font-size: var(--type-mega); letter-spacing: 2px; }
+.attract-screen[data-panel="mode"] .attract-title,
+.attract-screen[data-panel="players"] .attract-title,
+.attract-screen[data-panel="mods"] .attract-title { font-size: var(--type-mega); letter-spacing: 2px; }
 /* Choose Your Pilot needs the most room: a smaller title and tighter slot. */
 .attract-screen[data-panel="pilotselect"] .attract-title { font-size: var(--type-title-lg); letter-spacing: 2px; }
 .attract-screen[data-panel="pilotselect"] .attract-slot { margin-top: 10px; }
@@ -755,6 +757,35 @@ a { color: var(--gold); }
   padding: 3px 6px;
 }
 .pilot-tag.default { color: var(--void); background: var(--gold); border-color: var(--amber); }
+
+/* Multi-player menus over the title layout: Choose Pilots + House Rules. */
+.attract-screen[data-panel="players"] .attract-boards,
+.attract-screen[data-panel="mods"] .attract-boards { display: none; }
+.attract-screen[data-panel="players"] .attract-content,
+.attract-screen[data-panel="mods"] .attract-content { overflow-y: auto; }
+.attract-screen[data-panel="players"] .attract-hero,
+.attract-screen[data-panel="mods"] .attract-hero { justify-content: flex-start; }
+.attract-screen[data-panel="players"] .attract-slot,
+.attract-screen[data-panel="mods"] .attract-slot { width: min(100%, 800px); }
+.slot-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; }
+.slot-card {
+  display: grid;
+  gap: 3px;
+  text-align: left;
+  padding: 10px 12px;
+  border: 2px solid #34414d;
+  border-left: 6px solid var(--pilot-color, #34414d);
+  background: rgba(22, 30, 40, 0.94);
+  color: var(--text);
+  cursor: pointer;
+}
+.slot-card:hover, .slot-card:focus-visible { border-color: var(--gold); }
+.slot-card.active { border-color: var(--gold); background: #1b2230; }
+.slot-num { font: var(--type-micro)/1 var(--display); color: var(--slate); letter-spacing: 1px; }
+.slot-card strong { font: var(--type-small)/1.2 var(--body); }
+.slot-card small { color: var(--muted); font: var(--type-micro)/1 var(--body); }
+.menu-stack-tight { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.menu-stack-tight .cab-btn { width: 100%; }
 
 /* ------------------------------------------------------------------- solo */
 /* Solo Flight is a full-bleed playfield. The game canvas fills the whole 3:2
@@ -997,9 +1028,40 @@ select:focus-visible, input:focus-visible, .cab-btn:focus-visible, .controller:f
 .roundintro-count { font: var(--type-mega)/1 var(--display); color: var(--gold); margin: 0; animation: bootpulse .7s steps(2) infinite; }
 
 /* ------------------------------------------------------------------- match */
+/* The match fills the cabinet screen (like Solo). A thin HUD strip replaces the
+   old header bar; the lanes fill the rest; round results are a pop-up menu. */
+.cabinet-screen > .match-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  background: var(--void);
+}
+.match-hud {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 14px;
+  background: rgba(10, 11, 16, 0.82);
+  border-bottom: 1px solid #223;
+  z-index: 3;
+}
+.match-hud .match-quit { margin-left: auto; }
 .match-round { font: var(--type-small)/1 var(--display); color: var(--slate); letter-spacing: 1px; }
 .match-pips { font: var(--type-small)/1 var(--body); color: var(--amber); letter-spacing: 2px; }
-.multi-board { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+.multi-board {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 8px;
+  padding: 8px;
+  align-content: start;
+}
 .multi-board[hidden] { display: none; }
 .multi-sim-card {
   min-width: 0; overflow: hidden;
@@ -1040,22 +1102,45 @@ select:focus-visible, input:focus-visible, .cab-btn:focus-visible, .controller:f
 .multi-sim-reward .sim-outcome.complete { color: var(--amber); }
 .multi-error { margin: 14px 0 0; padding: 12px; border: 1px solid #8d594b; color: #ffad93; font: var(--type-body-lg)/1.3 var(--body); }
 .multi-error[hidden] { display: none; }
-.match-continue { align-self: center; }
 .match-continue[hidden] { display: none; }
 .match-banner {
-  display: grid;
-  gap: 3px;
-  margin: 0 0 12px;
-  padding: 12px 16px;
-  border: 2px solid var(--gold);
-  background: #1a1712;
-  text-align: center;
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(10, 11, 16, 0.72);
 }
 .match-banner[hidden] { display: none; }
+.match-banner-panel {
+  width: min(100%, 520px);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 20px;
+  border: 2px solid var(--gold);
+  background: rgba(16, 21, 31, 0.97);
+  text-align: center;
+}
 .match-banner-kicker { font: var(--type-tiny)/1 var(--display); letter-spacing: 2px; color: var(--slate); margin: 0; }
 .match-banner-winner { font: var(--type-subhead)/1.2 var(--display); margin: 4px 0 0; }
 .match-banner-margin { font: var(--type-body-lg)/1 var(--body); color: var(--amber); letter-spacing: 2px; margin: 0; }
-.match-banner-prompt { font: var(--type-fine)/1 var(--display); color: var(--slate); letter-spacing: 2px; margin: 6px 0 0; animation: blink 1s steps(2) infinite; }
+.match-standings { display: grid; gap: 6px; margin: 14px 0; }
+.match-standing {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 10px;
+  border-left: 6px solid var(--pilot-color, transparent);
+  background: #0f151d;
+  font: var(--type-small)/1.2 var(--body);
+  text-align: left;
+}
+.standing-name { color: var(--text); }
+.standing-val { color: var(--amber); white-space: nowrap; }
+.match-banner-prompt { font: var(--type-fine)/1 var(--display); color: var(--slate); letter-spacing: 2px; margin: 10px 0 0; animation: blink 1s steps(2) infinite; }
 .confetti { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
 .match-confetti { z-index: 2; }
 
@@ -1083,6 +1168,7 @@ select:focus-visible, input:focus-visible, .cab-btn:focus-visible, .controller:f
 .podium-name { font: var(--type-caption)/1.3 var(--display); color: var(--pilot-color, var(--text)); }
 .celebrate-name { font: var(--type-title-lg)/1.2 var(--display); margin: 24px 0 10px; position: relative; z-index: 1; }
 .celebrate-tagline { font: var(--type-lead)/1.4 var(--display); color: var(--amber); margin: 0; position: relative; z-index: 1; }
+.celebrate-stats { font: var(--type-small)/1.4 var(--body); color: var(--slate); letter-spacing: 1px; margin: 12px 0 0; position: relative; z-index: 1; }
 .celebrate-continue { font: var(--type-small)/1 var(--display); color: var(--slate); margin-top: 26px; letter-spacing: 2px; animation: blink 1s steps(2) infinite; position: relative; z-index: 1; }
 .celebrate.lose { background: #0a0b10; }
 .crashed-lander { width: 140px; height: 90px; margin: 10px auto 24px; position: relative; transform: rotate(-12deg); }

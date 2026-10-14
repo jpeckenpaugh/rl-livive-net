@@ -116,6 +116,26 @@
                   <p class="attract-eyebrow">CHOOSE YOUR PILOT</p>
                   <div class="pilot-cards" id="pilot-cards" role="group" aria-label="Choose your pilot"></div>
                 </div>
+                <div class="title-panel" id="title-panel-players" hidden>
+                  <p class="attract-eyebrow" id="players-chip">CHOOSE PILOTS · VERSUS</p>
+                  <div class="slot-row" id="players-grid"></div>
+                  <p class="attract-eyebrow" id="players-hint">TAP A SLOT, THEN PICK A PILOT</p>
+                  <div class="pilot-cards" id="mp-pilot-cards" role="group" aria-label="Choose pilot for the active slot"></div>
+                  <div class="menu-stack menu-stack-tight">
+                    <button class="cab-btn cab-btn-primary" id="players-confirm" type="button"><b>START MATCH</b></button>
+                  </div>
+                </div>
+                <div class="title-panel" id="title-panel-houserules" hidden>
+                  <p class="attract-eyebrow" id="mods-title">HOUSE RULES</p>
+                  <p class="seed-chip" id="mods-seed">COURSE SEED — · LOCKED</p>
+                  <div class="hazard-grid" id="mods-grid"></div>
+                  <p class="loadout-summary" id="mods-summary">HAZARDS ARMED: 0 · DIFFICULTY ☆☆☆</p>
+                  <div class="menu-stack menu-stack-tight mods-actions">
+                    <button class="cab-btn cab-btn-ghost" id="mods-clear" type="button">CLEAR ALL</button>
+                    <button class="cab-btn cab-btn-ghost" id="mods-recommend" type="button">RECOMMENDED</button>
+                    <button class="cab-btn cab-btn-primary" id="mods-proceed" type="button">TO THE PAD ▶</button>
+                  </div>
+                </div>
               </div>
             </div>
             <div class="attract-boards">
@@ -167,44 +187,6 @@
           </div>
         </section>
 
-        <!-- ======================== SELECT PLAYERS ====================== -->
-        <section id="screen-players" class="screen" hidden aria-label="Select players">
-          <div class="screen-head">
-            <button class="cab-btn cab-btn-ghost back-btn" data-screen="mode" type="button">← BACK</button>
-            <span class="screen-kicker">SELECT PLAYERS</span>
-            <span class="context-chip" id="players-chip">VERSUS · BEST OF 3</span>
-          </div>
-          <div class="players-grid" id="players-grid"></div>
-          <p class="roster-footer">
-            Roster: seekdepth jpeckenpaugh · Miftakhov · cpow-89 · khordoo · Sanket — every pilot links to its source
-          </p>
-          <div class="screen-actions">
-            <button class="cab-btn cab-btn-ghost" data-screen="mode" type="button">BACK</button>
-            <button class="cab-btn cab-btn-primary" id="players-confirm" type="button">CONFIRM ▶</button>
-          </div>
-        </section>
-
-        <!-- ===================== MATCH / ROUND MODIFIERS ================= -->
-        <section id="screen-mods" class="screen" hidden aria-label="Modifiers">
-          <div class="screen-head">
-            <button class="cab-btn cab-btn-ghost back-btn" id="mods-back" type="button">← BACK</button>
-            <span class="screen-kicker" id="mods-title">MATCH MODIFIERS</span>
-            <span class="context-chip" id="mods-chip">1 v 1 · BEST OF 3</span>
-          </div>
-          <div class="fairness-banner">
-            <span class="lock-glyph" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 2a5 5 0 0 0-5 5v3H5a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-2V7a5 5 0 0 0-5-5zm-3 5a3 3 0 0 1 6 0v3H9V7zm3 7a1.5 1.5 0 0 1 1 2.6V18h-2v-1.4A1.5 1.5 0 0 1 12 14z" fill="currentColor"/></svg></span>
-            ALL PILOTS SHARE THE SAME HAZARD TIMELINE.
-          </div>
-          <p class="seed-chip" id="mods-seed">COURSE SEED — · LOCKED</p>
-          <div class="hazard-grid" id="mods-grid"></div>
-          <p class="loadout-summary" id="mods-summary">HAZARDS ARMED: 0 · DIFFICULTY ☆☆☆</p>
-          <div class="screen-actions mods-actions">
-            <button class="cab-btn cab-btn-ghost" id="mods-clear" type="button">CLEAR ALL</button>
-            <button class="cab-btn cab-btn-ghost" id="mods-recommend" type="button">RECOMMENDED</button>
-            <button class="cab-btn cab-btn-primary" id="mods-proceed" type="button">TO THE PAD ▶</button>
-          </div>
-        </section>
-
         <!-- ========================== ROUND INTRO ======================== -->
         <section id="screen-roundintro" class="screen center-screen" hidden aria-label="Round intro">
           <div class="roundintro-card">
@@ -218,26 +200,28 @@
         </section>
 
         <!-- ============================= MATCH =========================== -->
-        <section id="screen-match" class="screen" hidden aria-label="Match">
-          <div class="match-head">
-            <button class="cab-btn cab-btn-ghost back-btn" id="match-abandon" type="button">✕ QUIT</button>
-            <span class="match-round" id="match-round">ROUND 1 / 3 · SALVAGE STATION-04</span>
+        <section id="screen-match" class="screen match-screen" hidden aria-label="Match">
+          <div class="match-hud">
+            <span class="match-round" id="match-round">ROUND 1 / 3</span>
             <span class="match-pips" id="match-pips"></span>
-            <button class="cab-btn cab-btn-primary match-continue" id="match-continue" type="button" hidden>NEXT ROUND ▶</button>
-          </div>
-          <div class="match-banner" id="match-banner" hidden>
-            <p class="match-banner-kicker" id="match-banner-kicker">ROUND COMPLETE</p>
-            <p class="match-banner-winner" id="match-banner-winner">ROUND COMPLETE</p>
-            <p class="match-banner-margin" id="match-banner-margin">+0 PTS</p>
-            <p class="match-banner-prompt" id="match-banner-prompt">PRESS START · SPACE / ENTER</p>
+            <button class="cab-btn cab-btn-ghost match-quit" id="match-abandon" type="button">✕ QUIT</button>
           </div>
           <div id="multi-board" class="multi-board" aria-label="Pilots racing"></div>
           <canvas class="confetti match-confetti" id="match-confetti" aria-hidden="true"></canvas>
           <div id="match-error" class="multi-error" hidden></div>
-          <aside class="between-reel" id="between-reel" hidden aria-label="High scores between rounds">
-            <p class="panel-tag" id="between-reel-tag">CABINET RECORDS</p>
-            <ol class="highscore-list" id="between-highscore-list"></ol>
-          </aside>
+          <div class="match-banner" id="match-banner" hidden>
+            <div class="match-banner-panel">
+              <p class="match-banner-kicker" id="match-banner-kicker">ROUND COMPLETE</p>
+              <p class="match-banner-winner" id="match-banner-winner">ROUND COMPLETE</p>
+              <p class="match-banner-margin" id="match-banner-margin">+0 PTS</p>
+              <div class="match-standings" id="match-standings"></div>
+              <div class="result-menu">
+                <button id="match-continue" class="cab-btn cab-btn-primary" type="button" hidden>NEXT ROUND ▶</button>
+                <button id="match-banner-title" class="cab-btn" type="button"><b>RETURN TO TITLE</b></button>
+              </div>
+              <p class="match-banner-prompt" id="match-banner-prompt">PRESS START · SPACE / ENTER</p>
+            </div>
+          </div>
         </section>
 
         <!-- ========================== CELEBRATE WIN ======================= -->
@@ -246,8 +230,12 @@
           <div class="podium" id="win-podium"></div>
           <h2 class="celebrate-name" id="win-name">CHAMPION</h2>
           <p class="celebrate-tagline" id="win-tagline">STICKED THE LANDING.</p>
+          <p class="celebrate-stats" id="win-stats"></p>
           <canvas class="confetti" id="win-confetti" aria-hidden="true"></canvas>
-          <p class="celebrate-continue">PRESS START TO CONTINUE</p>
+          <div class="screen-actions">
+            <button class="cab-btn cab-btn-primary" id="win-rematch" type="button">REMATCH</button>
+            <button class="cab-btn cab-btn-ghost" id="win-title" type="button">RETURN TO TITLE</button>
+          </div>
         </section>
 
         <!-- ======================== CELEBRATE LOSE ======================= -->
@@ -261,7 +249,7 @@
           <p class="celebrate-margin" id="lose-margin">—</p>
           <div class="screen-actions lose-actions">
             <button class="cab-btn cab-btn-primary" id="lose-rematch" type="button">REMATCH</button>
-            <button class="cab-btn cab-btn-ghost" id="lose-menu" type="button">MAIN MENU</button>
+            <button class="cab-btn cab-btn-ghost" id="lose-menu" type="button">RETURN TO TITLE</button>
           </div>
         </section>
 

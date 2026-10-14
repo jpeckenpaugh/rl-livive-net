@@ -764,13 +764,15 @@ const SCREEN_TRACKS = {
 // The title, start menu, and multi-player sub-menu all share one layout: the
 // live demo background stays up and only the foreground panel swaps. They are
 // therefore panels inside #screen-attract, not separate cabinet screens.
-const TITLE_SCREENS = new Set(["attract", "menu", "solomode", "pilotselect", "mode"]);
+const TITLE_SCREENS = new Set(["attract", "menu", "solomode", "pilotselect", "mode", "players", "mods"]);
 const TITLE_PANELS = {
   attract: "title-panel-attract",
   menu: "title-panel-menu",
   solomode: "title-panel-solo",
   pilotselect: "title-panel-pilot",
   mode: "title-panel-mode",
+  players: "title-panel-players",
+  mods: "title-panel-houserules",
 };
 function isTitleScreen(name) { return TITLE_SCREENS.has(name); }
 let currentScreenName = "boot";
@@ -1710,6 +1712,23 @@ function finishRound() {
   showRoundResult(info);
 }
 
+/* Running standings shown inside the round-complete pop-up. */
+function renderMatchStandings() {
+  const el = $("match-standings"); if (!el || !match) return;
+  const rows = match.pilots.slice().sort((a, b) => match.stats[b.slot].total - match.stats[a.slot].total);
+  el.replaceChildren(...rows.map((p) => {
+    const st = match.stats[p.slot];
+    const row = document.createElement("div");
+    row.className = "match-standing";
+    row.style.setProperty("--pilot-color", p.color);
+    const nm = document.createElement("span"); nm.className = "standing-name"; nm.textContent = p.name;
+    const val = document.createElement("span"); val.className = "standing-val";
+    val.textContent = match.teams ? `${st.wins} W · ${st.total.toFixed(0)} PTS` : `${st.total.toFixed(0)} PTS · ${st.lands} LANDED`;
+    row.append(nm, val);
+    return row;
+  }));
+}
+
 /* Round end lands on the 4-lane board: big place numbers + a continue banner. */
 function showRoundResult(info) {
   const humanLost = match.humanSlot >= 0 && !humanWonRound(info);
@@ -1750,10 +1769,8 @@ function showRoundResult(info) {
   const cont = $("match-continue");
   if (cont) { cont.textContent = matchOver ? "RESULTS ▶" : "NEXT ROUND ▶"; cont.hidden = false; }
   if (currentScreenName !== "match") showScreen("match");
+  renderMatchStandings();
   showMatchBanner(true, matchOver);
-  // D6: surface the high-score reel between rounds.
-  const betweenReel = $("between-reel");
-  if (betweenReel) { betweenReel.hidden = false; renderHighScores(); }
   // Announcer reacts to the round. The director composes a Player N line from
   // the round context (subject + event + modifier) and falls back to the classic
   // flawless/perfect/K.O. clips when the new dynamic clips are not baked yet.
@@ -1862,6 +1879,13 @@ function showWin(championSlot) {
   if (nameEl) { nameEl.textContent = champ.name; nameEl.style.color = champ.color; }
   const tag = $("win-tagline");
   if (tag) tag.textContent = pick(TAGLINES.winnerMatch);
+  const statsEl = $("win-stats");
+  if (statsEl) {
+    const st = match.stats[championSlot] || { total: 0, wins: 0, lands: 0 };
+    statsEl.textContent = match.teams
+      ? `${match.mode.toUpperCase()} · ROUNDS WON ${Math.max(...match.roundWins)} · ${st.total.toFixed(0)} PTS`
+      : `${match.mode.toUpperCase()} · ${st.wins} ROUNDS WON · ${st.lands} LANDED · ${st.total.toFixed(0)} PTS`;
+  }
   showScreen("win");
   Commentary.matchWin(championSlot);
   Sound.sfx("fanfare");
@@ -2024,15 +2048,12 @@ let playerModels = [];
 function openMods(context) {
   modsContext = context;
   const title = $("mods-title");
-  const chip = $("mods-chip");
   if (context === "round") {
-    if (title) title.textContent = "ROUND MODIFIERS";
-    if (chip) chip.textContent = `CUP · ROUND ${match.round + 1} OF ${match.totalRounds}`;
+    if (title) title.textContent = `ROUND ${match.round + 1} OF ${match.totalRounds} — HOUSE RULES`;
     // Cup only: each pit stop past the opener introduces the next challenger.
     if (match.round >= 1) Commentary.line("new_challenger");
   } else {
-    if (title) title.textContent = "MATCH MODIFIERS";
-    if (chip) chip.textContent = match.mode === "versus" ? "1 v 1 · BEST OF 3" : "2 v 2 · BEST OF 3";
+    if (title) title.textContent = "HOUSE RULES";
   }
   const seedEl = $("mods-seed");
   if (seedEl) seedEl.textContent = `${context === "round" ? "ROUND" : "COURSE"} SEED ${(match.seedBase % 100000)} · LOCKED`;
@@ -2102,37 +2123,55 @@ function updateModsSummary() {
 /* ============================================================================
  * PLAYERS SCREEN
  * ==========================================================================*/
+let mpActiveSlot = 0;
 function renderPlayers() {
-  const grid = $("players-grid"); if (!grid) return;
+  const slotsEl = $("players-grid"); if (!slotsEl) return;
   const mode = cabinetMode;
   const slotCount = mode === "versus" ? 2 : 4;
   playerModels = playerModels.slice(0, slotCount);
   while (playerModels.length < slotCount) playerModels.push(defaultModelFor(playerModels.length, mode));
+  if (mpActiveSlot >= slotCount) mpActiveSlot = 0;
   const chip = $("players-chip");
-  if (chip) chip.textContent = mode === "versus" ? "VERSUS · BEST OF 3" : mode === "doubles" ? "DOUBLES · BEST OF 3" : "CUP · 10 SEEDED ROUNDS";
-  grid.innerHTML = playerModels.map((mid, slot) => {
+  if (chip) chip.textContent = mode === "versus" ? "CHOOSE PILOTS · VERSUS 1 v 1" : mode === "doubles" ? "CHOOSE PILOTS · DOUBLES 2 v 2" : "CHOOSE PILOTS · CUP";
+  const hint = $("players-hint");
+  if (hint) hint.textContent = `SLOT ${mpActiveSlot + 1} — PICK A PILOT`;
+  slotsEl.replaceChildren(...playerModels.map((mid, slot) => {
     const human = mid === "human";
-    const label = human ? "HUMAN PILOT" : modelLabel(mid);
-    const role = human ? "you fly" : modelRole(mid);
-    const src = human ? "" : (modelEntry(mid) && modelEntry(mid).source ? `<a class="pilot-src" href="${modelEntry(mid).source}" target="_blank" rel="noreferrer">source ↗</a>` : "");
-    return `<div class="player-card" style="--pilot-color:${PILOT_COLORS[slot]}">
-      <div class="player-head"><span class="pilot-chip" style="--pilot-color:${PILOT_COLORS[slot]}"></span><b>PILOT ${slot + 1}</b></div>
-      <div class="player-role">${escapeHtml(role)}</div>
-      <label class="player-select"><span>CHOOSE</span>
-        <select data-slot="${slot}" ${slot !== 0 ? "" : ""}></select>
-      </label>
-      <div class="player-src-row">${src}</div>
-    </div>`;
-  }).join("");
-  grid.querySelectorAll("select[data-slot]").forEach((sel) => {
-    const slot = Number(sel.dataset.slot);
-    const opts = [];
-    if (slot === 0) opts.push({ value: "human", label: "HUMAN PILOT" });
-    catalog.forEach((m) => opts.push({ value: m.id, label: m.label }));
-    sel.innerHTML = opts.map((o) => `<option value="${o.value}">${escapeHtml(o.label)}</option>`).join("");
-    sel.value = playerModels[slot] || opts[0].value;
-    sel.addEventListener("change", () => { playerModels[slot] = sel.value; Sound.sfx("menu"); renderPlayers(); });
-  });
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = `slot-card${slot === mpActiveSlot ? " active" : ""}`;
+    card.style.setProperty("--pilot-color", PILOT_COLORS[slot]);
+    const n = document.createElement("span"); n.className = "slot-num"; n.textContent = `PILOT ${slot + 1}`;
+    const nm = document.createElement("strong"); nm.textContent = human ? "HUMAN PILOT" : modelLabel(mid);
+    const rl = document.createElement("small"); rl.textContent = human ? "you fly" : modelRole(mid);
+    card.append(n, nm, rl);
+    card.addEventListener("click", () => { Sound.sfx("select"); mpActiveSlot = slot; renderPlayers(); });
+    return card;
+  }));
+  const cardsEl = $("mp-pilot-cards"); if (!cardsEl) return;
+  const options = (mpActiveSlot === 0 && mode !== "cup")
+    ? [{ id: "human", label: "Human Pilot", algorithm: "YOU" }, ...catalog]
+    : catalog;
+  cardsEl.replaceChildren(...options.map((m) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "pilot-card";
+    const name = document.createElement("span"); name.className = "pilot-card-name"; name.textContent = m.label;
+    const tags = document.createElement("span"); tags.className = "pilot-card-tags";
+    if (playerModels[mpActiveSlot] === m.id) {
+      const sel = document.createElement("span"); sel.className = "pilot-tag default"; sel.textContent = "SELECTED"; tags.append(sel);
+    }
+    const algo = document.createElement("span"); algo.className = "pilot-tag"; algo.textContent = m.algorithm || "PILOT";
+    tags.append(algo);
+    card.append(name, tags);
+    card.addEventListener("click", () => {
+      playerModels[mpActiveSlot] = m.id;
+      Sound.sfx("select");
+      if (mpActiveSlot < slotCount - 1) mpActiveSlot += 1;
+      renderPlayers();
+    });
+    return card;
+  }));
 }
 function defaultModelFor(slot, mode) {
   const models = catalog.length ? catalog.map((m) => m.id) : ["ppo"];
@@ -2638,9 +2677,6 @@ function wireEvents() {
   if (modsClear) modsClear.addEventListener("click", () => { if (match) { match.hazards = { ...HAZARD_KEYS }; Sound.sfx("menu"); renderHazardGrid(); } });
   const modsRec = $("mods-recommend");
   if (modsRec) modsRec.addEventListener("click", () => { if (match) { match.hazards = { ...HAZARD_KEYS, ...RECOMMENDED }; Sound.sfx("menu"); renderHazardGrid(); } });
-  const modsBack = $("mods-back");
-  if (modsBack) modsBack.addEventListener("click", () => { Sound.sfx("menu"); renderPlayers(); showScreen("players"); Commentary.line("select"); });
-
   const matchContinue = $("match-continue");
   if (matchContinue) matchContinue.addEventListener("click", () => { Sound.sfx("select"); continueAfterRound(); });
 
@@ -2658,9 +2694,18 @@ function wireEvents() {
   const loseRematch = $("lose-rematch");
   if (loseRematch) loseRematch.addEventListener("click", () => { Sound.sfx("select"); rematch(); });
   const loseMenu = $("lose-menu");
-  if (loseMenu) loseMenu.addEventListener("click", () => { Sound.sfx("menu"); showScreen("menu"); });
+  if (loseMenu) loseMenu.addEventListener("click", () => { Sound.sfx("menu"); showScreen("attract"); attractTaglineAt = 0; });
   const matchAbandon = $("match-abandon");
-  if (matchAbandon) matchAbandon.addEventListener("click", () => { running = false; match = null; Sound.sfx("menu"); showScreen("menu"); });
+  if (matchAbandon) matchAbandon.addEventListener("click", () => { running = false; match = null; Sound.sfx("menu"); showScreen("attract"); attractTaglineAt = 0; });
+  const bannerTitle = $("match-banner-title");
+  if (bannerTitle) bannerTitle.addEventListener("click", () => {
+    running = false; match = null; Sound.sfx("menu");
+    showMatchBanner(false); showScreen("attract"); attractTaglineAt = 0;
+  });
+  const winRematch = $("win-rematch");
+  if (winRematch) winRematch.addEventListener("click", (e) => { e.stopPropagation(); Sound.sfx("select"); rematch(); });
+  const winTitle = $("win-title");
+  if (winTitle) winTitle.addEventListener("click", (e) => { e.stopPropagation(); Sound.sfx("menu"); showScreen("attract"); attractTaglineAt = 0; });
   const winScreen = $("screen-win");
   if (winScreen) winScreen.addEventListener("click", advanceFromWin);
 
