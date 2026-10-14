@@ -2,6 +2,10 @@
 """Generate arcade announcer voice lines with a modern neural TTS (Piper),
 then quantize/downsample them so they sound like a 1990s arcade cabinet.
 
+The spoken copy and per-clip pitch/drive live in a line spec (the v2 catalog),
+not in this file. By default the script reads `tools/voice_lines_v2.json`,
+next to this file; pass `--spec` to point at another catalog.
+
 Pipeline per line:
   1. Neural TTS (Piper, 22.05 kHz, high quality / realistic).
   2. Optional pitch and tempo tweak (announcer flair).
@@ -16,33 +20,39 @@ Usage:
 import argparse
 import json
 import os
-import struct
+import sys
 import wave
 
 import numpy as np
 from piper import PiperVoice, SynthesisConfig
 
-# Key phrases / "action beats" in the 1990s arcade announcer idiom.
-# name -> (spoken text, options)
-#   pitch: playback rate multiplier applied after synthesis (>1 = higher)
-#   drive: extra gain into the quantizer for a hotter, crunchier tone
-LINES = {
-    "coin":            {"text": "Insert coin.", "drive": 1.15},
-    "select":          {"text": "Choose your pilot.", "drive": 1.1},
-    "round_one":       {"text": "Round one.", "drive": 1.1},
-    "round_two":       {"text": "Round two.", "drive": 1.1},
-    "round_three":     {"text": "Final round.", "drive": 1.1},
-    "fight":           {"text": "Fight!", "drive": 1.3, "pitch": 1.06},
-    "perfect":         {"text": "Perfect!", "drive": 1.35, "pitch": 1.12},
-    "flawless":        {"text": "Flawless victory!", "drive": 1.3, "pitch": 1.1},
-    "ko":              {"text": "K. O.!", "drive": 1.4, "pitch": 1.05},
-    "you_win":         {"text": "You win!", "drive": 1.2, "pitch": 1.08},
-    "you_lose":        {"text": "You lose.", "drive": 1.1, "pitch": 0.95},
-    "game_over":       {"text": "Game over.", "drive": 1.1, "pitch": 0.93},
-    "new_challenger":  {"text": "New challenger!", "drive": 1.3, "pitch": 1.1},
-    "time_up":         {"text": "Time up!", "drive": 1.25, "pitch": 1.08},
-    "take_off":        {"text": "Take off!", "drive": 1.2, "pitch": 1.08},
-}
+DEFAULT_SPEC = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "voice_lines_v2.json")
+
+
+def load_spec(path):
+    """Load the line spec (clip id -> spoken text + options) from a catalog.
+
+    The v2 catalog stores clips as a list of records; each record must have an
+    `id` and a `text`. Optional `options` carries the announcer flair used by
+    the retro stage (`pitch`, `drive`). The returned dict preserves catalog
+    order and keeps the record metadata for the manifest.
+    """
+    with open(path, "r", encoding="utf-8") as f:
+        spec = json.load(f)
+    clips = spec.get("clips")
+    if not isinstance(clips, list) or not clips:
+        raise ValueError(f"{path}: expected a non-empty 'clips' array")
+    lines = {}
+    for clip in clips:
+        clip_id = clip.get("id")
+        text = clip.get("text")
+        if not clip_id or not text:
+            raise ValueError(f"{path}: every clip needs an 'id' and 'text': {clip!r}")
+        if clip_id in lines:
+            raise ValueError(f"{path}: duplicate clip id {clip_id!r}")
+        lines[clip_id] = clip
+    return spec, lines
 
 
 def synth(voice, text, length_scale=1.0):
@@ -79,8 +89,7 @@ def retro(audio, dst_sr=8000, bits=8, drive=1.0, noise=0.0025):
     """Downsample + bit-quantize + a hair of noise = old arcade DAC."""
     if audio.size == 0:
         return audio
-    a = pitch_shift(audio, 1.0)  # placeholder to keep API symmetric
-    a = a * drive
+    a = audio * drive
     # quantize to `bits` levels
     levels = (1 << bits) - 1
     a = np.clip(a, -1.0, 1.0)
@@ -130,49 +139,64 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--spec", default=DEFAULT_SPEC,
+                    help="line spec / catalog JSON (default: tools/voice_lines_v2.json)")
     ap.add_argument("--retro-rate", type=int, default=8000)
     ap.add_argument("--retro-bits", type=int, default=8)
     ap.add_argument("--keep-hifi", action="store_true")
     args = ap.parse_args()
 
+    spec, lines = load_spec(args.spec)
+    gen = spec.get("generator") or {}
+    length_scale = float(gen.get("lengthScale", 1.05))
+    post_alpha = float(gen.get("postFilterAlpha", 0.55))
+    peak_target = float(gen.get("peak", 0.9))
+
     os.makedirs(args.out, exist_ok=True)
     voice = PiperVoice.load(args.model)
     sr = voice.config.sample_rate
     manifest = {"sampleRate": args.retro_rate, "bits": args.retro_bits,
-                "sourceSampleRate": sr, "lines": {}}
+                "sourceSampleRate": sr,
+                "catalogVersion": spec.get("catalogVersion"),
+                "lines": {}}
 
-    for name, spec in LINES.items():
-        text = spec["text"]
-        factor = spec.get("pitch", 1.0)
-        drive = spec.get("drive", 1.0)
-        _, dry = synth(voice, text, length_scale=1.05)
+    for name, clip in lines.items():
+        text = clip["text"]
+        options = clip.get("options") or {}
+        factor = options.get("pitch", 1.0)
+        drive = options.get("drive", 1.0)
+        _, dry = synth(voice, text, length_scale=length_scale)
         dry = trim_silence(dry, sr=sr)
         dry = pitch_shift(dry, factor)
         retro_a = resample(dry, sr, args.retro_rate)
         retro_a = retro(retro_a, bits=args.retro_bits, drive=drive)
         # cheap one-pole low-pass to soften aliasing (emulates DAC output filter)
-        alpha = 0.55
         y = np.empty_like(retro_a)
         acc = 0.0
         for i, v in enumerate(retro_a):
-            acc = acc + alpha * (v - acc)
+            acc = acc + post_alpha * (v - acc)
             y[i] = acc
         retro_a = y
         # normalize to a consistent arcade-loud level
         peak = float(np.max(np.abs(retro_a))) or 1.0
-        retro_a = retro_a / peak * 0.9
+        retro_a = retro_a / peak * peak_target
         write_wav_8(os.path.join(args.out, name + ".wav"), retro_a, args.retro_rate)
         if args.keep_hifi:
             write_wav_16(os.path.join(args.out, "hifi", name + ".wav"), dry, sr)
         dur = round(retro_a.size / args.retro_rate, 3)
-        manifest["lines"][name] = {"file": name + ".wav", "text": text,
-                                   "duration": dur, "rms": round(rms(retro_a), 4)}
-        print(f"{name:16s} {dur:5.2f}s rms={rms(retro_a):.3f}  '{text}'")
+        record = {"file": name + ".wav", "text": text,
+                  "duration": dur, "rms": round(rms(retro_a), 4)}
+        # carry the catalog's classification so the director can read it too
+        for field in ("type", "category", "priority"):
+            if clip.get(field) is not None:
+                record[field] = clip[field]
+        manifest["lines"][name] = record
+        print(f"{name:24s} {dur:5.2f}s rms={rms(retro_a):.3f}  '{text}'")
 
     with open(os.path.join(args.out, "manifest.json"), "w") as f:
         json.dump(manifest, f, indent=2)
-    print(f"\nWrote {len(LINES)} lines -> {args.out}")
+    print(f"\nWrote {len(lines)} lines from {os.path.relpath(args.spec)} -> {args.out}")
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
