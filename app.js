@@ -85,19 +85,13 @@ const HAZARDS = [
     ],
   },
   {
-    key: "lowgrav", name: "LOW GRAVITY", effect: "floaty", real: true,
-    explain: "Gravity is weaker; the lander floats and descends slowly.",
+    key: "gravity", name: "GRAVITY ADJUST", effect: "pull changes", real: true,
+    explain: "Change the pull: lighter floats, heavier drops.",
     levels: [
-      { tag: "MILD", label: "MILD", gravity: -8.0 },
-      { tag: "STRONG", label: "STRONG", gravity: -6.5 },
-    ],
-  },
-  {
-    key: "heavygrav", name: "HEAVY GRAVITY", effect: "heavy", real: true,
-    explain: "Gravity is stronger; the lander falls fast.",
-    levels: [
-      { tag: "MILD", label: "MILD", gravity: -12.0 },
-      { tag: "STRONG", label: "STRONG", gravity: -14.5 },
+      { tag: "LIGHT", label: "LIGHT", gravity: -8.0 },
+      { tag: "FLOATY", label: "FLOATY", gravity: -6.5 },
+      { tag: "HEAVY", label: "HEAVY", gravity: -12.0 },
+      { tag: "CRUSHING", label: "CRUSHING", gravity: -14.5 },
     ],
   },
   {
@@ -108,7 +102,7 @@ const HAZARDS = [
 ];
 /* Recommended match = sensor 10% + thruster 10% (the old binary defaults). */
 const RECOMMENDED = { sensor: 2, thruster: 2 };
-const HAZARD_KEYS = { sensor: 0, thruster: 0, wind: 0, lowgrav: 0, heavygrav: 0 };
+const HAZARD_KEYS = { sensor: 0, thruster: 0, wind: 0, gravity: 0 };
 const HAZARD_BY_KEY = Object.fromEntries(HAZARDS.map((h) => [h.key, h]));
 
 /* ---------------------------------------------------------------- helpers */
@@ -149,11 +143,8 @@ function hazRate(key, hz) { const s = hazSetting(key, hz); return s && typeof s.
 function hazForce(key, hz) { const s = hazSetting(key, hz); return s && typeof s.force === "number" ? s.force : 0; }
 function hazTag(key, hz) { const s = hazSetting(key, hz); return s ? s.tag : ""; }
 function gravityFor(hz) {
-  const low = hazSetting("lowgrav", hz);
-  if (low) return low.gravity;
-  const heavy = hazSetting("heavygrav", hz);
-  if (heavy) return heavy.gravity;
-  return GRAVITY_DEFAULT;
+  const s = hazSetting("gravity", hz);
+  return s ? s.gravity : GRAVITY_DEFAULT;
 }
 /* One shared decision per physics step, identical for every pilot. */
 function hazardAt(seed, t, hz) {
@@ -1767,6 +1758,8 @@ function showRoundResult(info) {
   if (currentScreenName !== "match") showScreen("match");
   renderMatchStandings();
   showMatchBanner(true, matchOver);
+  matchResultIndex = 0;
+  if (!matchOver) startRoundAutoCountdown();
   // Announcer reacts to the round. The director composes a Player N line from
   // the round context (subject + event + modifier) and falls back to the classic
   // flawless/perfect/K.O. clips when the new dynamic clips are not baked yet.
@@ -1800,8 +1793,49 @@ function showMatchBanner(visible, isOver) {
   const banner = $("match-banner");
   if (!banner) return;
   banner.hidden = !visible;
+  if (!visible) { cancelRoundAutoCountdown(); return; }
   const prompt = $("match-banner-prompt");
   if (prompt) prompt.textContent = isOver ? "PRESS START · SPACE / ENTER FOR RESULTS" : "PRESS START · SPACE / ENTER";
+}
+
+/* Round-complete auto-advance: five seconds, then the next round starts. Any
+ * player move (arrow keys, a click) cancels it. */
+let roundAuto = { timer: null, remaining: 0 };
+function cancelRoundAutoCountdown() {
+  if (roundAuto.timer) { clearInterval(roundAuto.timer); roundAuto.timer = null; }
+}
+function updateRoundAutoPrompt() {
+  const prompt = $("match-banner-prompt");
+  if (prompt) prompt.textContent = `NEXT ROUND IN ${roundAuto.remaining} · MOVE TO CANCEL`;
+}
+function startRoundAutoCountdown() {
+  cancelRoundAutoCountdown();
+  roundAuto.remaining = 5;
+  updateRoundAutoPrompt();
+  roundAuto.timer = setInterval(() => {
+    roundAuto.remaining -= 1;
+    if (roundAuto.remaining <= 0) {
+      cancelRoundAutoCountdown();
+      if (match && match.phase === "roundComplete") continueAfterRound();
+      return;
+    }
+    updateRoundAutoPrompt();
+  }, 1000);
+}
+let matchResultIndex = 0;
+function matchResultItems() {
+  const banner = $("match-banner");
+  if (!banner || banner.hidden) return [];
+  return Array.from(banner.querySelectorAll("button")).filter((el) => !el.hidden);
+}
+function moveMatchResultFocus(delta) {
+  const items = matchResultItems();
+  if (!items.length) return;
+  matchResultIndex = ((matchResultIndex + delta) % items.length + items.length) % items.length;
+  document.querySelectorAll(".kbd-focus").forEach((el) => el.classList.remove("kbd-focus"));
+  const el = items[matchResultIndex];
+  el.classList.add("kbd-focus");
+  try { el.focus({ preventScroll: true }); } catch (err) { el.focus(); }
 }
 
 function humanWonRound(info) {
@@ -1813,16 +1847,14 @@ function humanWonRound(info) {
 
 function continueAfterRound() {
   if (!match || match.phase !== "roundComplete") return;
+  cancelRoundAutoCountdown();
   stopConfetti();
   const cont = $("match-continue"); if (cont) cont.hidden = true;
   showMatchBanner(false);
   const betweenReel = $("between-reel"); if (betweenReel) betweenReel.hidden = true;
   const matchOver = match.teams ? (match.roundWins[0] >= 2 || match.roundWins[1] >= 2) : match.round >= match.totalRounds;
-  if (!matchOver) {
-    if (match.mode === "cup") openMods("round");
-    else beginRound();
-    return;
-  }
+  // Next Round starts the next round directly; House Rules only shows up front.
+  if (!matchOver) { beginRound(); return; }
   endMatch();
 }
 
@@ -2065,8 +2097,10 @@ function renderHazardGrid() {
     const chips = h.levels.map((lvl, i) => {
       const idx = i + 1;
       const active = on && level === idx;
-      return `<button class="hazard-chip${active ? " active" : ""}" type="button" data-hazard="${h.key}" data-level="${idx}" aria-pressed="${active}"${(!on || soon) ? " disabled" : ""}>${escapeHtml(lvl.label)}</button>`;
+      return `<button class="hazard-chip${active ? " active" : ""}" type="button" data-hazard="${h.key}" data-level="${idx}" aria-pressed="${active}">${escapeHtml(lvl.label)}</button>`;
     }).join("");
+    // The intensity options are hidden while the hazard is off.
+    const levelsHtml = (on && !soon) ? `<div class="hazard-levels" role="group" aria-label="${h.name} intensity">${chips}</div>` : "";
     return `<div class="hazard-card${on ? " armed" : ""}${soon ? " soon" : ""}" data-hazard="${h.key}">
       <div class="hazard-head">
         <span class="hazard-name">${h.name}${soon ? ' <em class="hazard-soon-tag">SOON</em>' : ""}</span>
@@ -2074,7 +2108,7 @@ function renderHazardGrid() {
       </div>
       <span class="hazard-effect">${escapeHtml(h.effect)}</span>
       <span class="hazard-explain">${escapeHtml(h.explain || "")}</span>
-      <div class="hazard-levels" role="group" aria-label="${h.name} intensity">${chips}</div>
+      ${levelsHtml}
     </div>`;
   }).join("");
   updateModsSummary();
@@ -2093,7 +2127,6 @@ function toggleHazard(key) {
   if (!h || !h.real) return;
   const on = hazLevel(key, match.hazards) > 0;
   match.hazards[key] = on ? 0 : 1;
-  if (!on) swapGravityIfNeeded(key);
   Sound.sfx("menu");
   renderHazardGrid();
 }
@@ -2101,24 +2134,9 @@ function setHazardLevel(key, level) {
   if (!match) return;
   const h = HAZARD_BY_KEY[key];
   if (!h || !h.real) return;
-  const next = clamp(Number(level) || 0, 0, h.levels.length);
-  match.hazards[key] = next;
-  if (next > 0) swapGravityIfNeeded(key);
+  match.hazards[key] = clamp(Number(level) || 0, 0, h.levels.length);
   Sound.sfx("menu");
   renderHazardGrid();
-}
-/* Only one gravity hazard can be armed at a time. */
-function swapGravityIfNeeded(key) {
-  if (key !== "lowgrav" && key !== "heavygrav") return;
-  const other = key === "lowgrav" ? "heavygrav" : "lowgrav";
-  if (hazOn(other, match.hazards)) { match.hazards[other] = 0; flashGravity(); }
-}
-function flashGravity() {
-  const seedEl = $("mods-seed");
-  if (!seedEl) return;
-  const original = seedEl.textContent;
-  seedEl.textContent = "GRAVITY SWAPPED.";
-  setTimeout(() => { seedEl.textContent = original; }, 1200);
 }
 function hazardStarRating() {
   const total = Object.keys(HAZARD_KEYS).reduce((sum, key) => sum + hazLevel(key, match.hazards), 0);
@@ -2717,13 +2735,13 @@ function wireEvents() {
   if (loseRematch) loseRematch.addEventListener("click", () => { Sound.sfx("select"); rematch(); });
   const loseMenu = $("lose-menu");
   if (loseMenu) loseMenu.addEventListener("click", () => { Sound.sfx("menu"); showScreen("attract"); attractTaglineAt = 0; });
-  const matchAbandon = $("match-abandon");
-  if (matchAbandon) matchAbandon.addEventListener("click", () => { running = false; match = null; Sound.sfx("menu"); showScreen("attract"); attractTaglineAt = 0; });
   const bannerTitle = $("match-banner-title");
   if (bannerTitle) bannerTitle.addEventListener("click", () => {
     running = false; match = null; Sound.sfx("menu");
     showMatchBanner(false); showScreen("attract"); attractTaglineAt = 0;
   });
+  const matchBanner = $("match-banner");
+  if (matchBanner) matchBanner.addEventListener("pointerdown", cancelRoundAutoCountdown);
   const winRematch = $("win-rematch");
   if (winRematch) winRematch.addEventListener("click", (e) => { e.stopPropagation(); Sound.sfx("select"); rematch(); });
   const winTitle = $("win-title");
@@ -2757,7 +2775,15 @@ function wireEvents() {
     }
     if (e.code === "ArrowDown" && currentScreenName === "solo") { e.preventDefault(); requestSoloReset(); return; }
     if (currentScreenName === "win" && (e.code === "Enter" || e.code === "Space")) { e.preventDefault(); advanceFromWin(); return; }
-    if (currentScreenName === "match" && match && match.phase === "roundComplete" && (e.code === "Enter" || e.code === "Space")) { e.preventDefault(); continueAfterRound(); return; }
+    if (currentScreenName === "match" && match && match.phase === "roundComplete") {
+      if (e.code === "ArrowUp" || e.code === "ArrowDown") {
+        cancelRoundAutoCountdown();
+        e.preventDefault();
+        moveMatchResultFocus(e.code === "ArrowUp" ? -1 : 1);
+        return;
+      }
+      if (e.code === "Enter" || e.code === "Space") { e.preventDefault(); continueAfterRound(); return; }
+    }
     handleMenuKey(e);
   });
   document.addEventListener("visibilitychange", () => { if (document.hidden) pressed.clear(); });

@@ -1077,13 +1077,13 @@ select:focus-visible, input:focus-visible, .cab-btn:focus-visible, .controller:f
   flex: 0 0 auto;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 14px;
   padding: 8px 14px;
   background: rgba(10, 11, 16, 0.82);
   border-bottom: 1px solid #223;
   z-index: 3;
 }
-.match-hud .match-quit { margin-left: auto; }
 .match-hud .match-round, .match-hud .match-pips {
   padding: 5px 9px;
   background: rgba(10, 11, 16, 0.7);
