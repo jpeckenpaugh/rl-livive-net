@@ -183,6 +183,9 @@ const Sound = (() => {
   let unlocked = false;
   let musicTimer = null;
   let musicStep = 0;
+  let trackId = null;
+  let track = null;
+  let musicGain = null;
   // 1990s-arcade announcer voice pack (8-bit / 8 kHz callouts). Cosmetic only:
   // every path here fails soft so a missing clip or locked audio never breaks play.
   const VOICE_NAMES = ["coin", "select", "round_one", "round_two", "round_three", "fight", "perfect", "flawless", "ko", "you_win", "you_lose", "game_over", "new_challenger", "time_up", "take_off"];
@@ -199,7 +202,7 @@ const Sound = (() => {
     if (ctx.state === "suspended") ctx.resume();
     return ctx;
   }
-  function tone(freq, dur, type = "square", vol = 0.05, delay = 0, slideTo = null) {
+  function tone(freq, dur, type = "square", vol = 0.05, delay = 0, slideTo = null, dest = null) {
     if (!ctx) return;
     const t0 = ctx.currentTime + delay;
     const osc = ctx.createOscillator();
@@ -210,7 +213,7 @@ const Sound = (() => {
     gain.gain.setValueAtTime(0.0001, t0);
     gain.gain.exponentialRampToValueAtTime(vol, t0 + 0.008);
     gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    osc.connect(gain).connect(ctx.destination);
+    osc.connect(gain).connect(dest || ctx.destination);
     osc.start(t0);
     osc.stop(t0 + dur + 0.02);
   }
@@ -237,24 +240,119 @@ const Sound = (() => {
       default: break;
     }
   }
-  const BASS = [98, 98, 131, 98, 87, 87, 116, 131];
-  const LEAD = [392, 523, 659, 523, 587, 523, 440, 392, 349, 440, 523, 440, 392, 349, 330, 392];
+  // ------------------------------------------------------------------ tracks
+  // One named song per screen. Each record owns its note tables, waves,
+  // volumes and tempo, so a screen change also changes the sound. `once` marks
+  // a short sting that plays through one time instead of looping. All tracks
+  // sit in A minor and its relative modes, so changes feel like one game.
+  const TRACKS = {
+    boot: {
+      lead: [262, 330, 392, 523, 659, 784, 1046], leadWave: "square", leadVol: 0.05,
+      stepMs: 150, once: true,
+    },
+    attract: {
+      bass: [110, 110, 110, 110, 110, 110, 110, 110],
+      lead: [440, 523, 494, 587, 523, 440, 392, 440, 494, 440, 392, 330],
+      bassWave: "triangle", leadWave: "square", bassVol: 0.03, leadVol: 0.018, stepMs: 380,
+    },
+    menu: {
+      bass: [110, 165, 110, 165, 131, 196, 147, 196],
+      lead: [440, 554, 659, 554, 494, 587, 659, 587, 523, 659, 784, 659, 494, 587, 740, 587],
+      bassWave: "triangle", leadWave: "square", bassVol: 0.03, leadVol: 0.02, stepMs: 280,
+    },
+    solo: {
+      bass: [98, 98, 147, 98, 131, 131, 165, 131],
+      lead: [392, 440, 523, 440, 392, 349, 392, 440, 523, 494, 440, 392, 349, 330, 294, 330],
+      bassWave: "triangle", leadWave: "triangle", bassVol: 0.028, leadVol: 0.02, stepMs: 340,
+    },
+    roundintro: {
+      lead: [523, 587, 659, 784, 880, 880, 784, 880, 659, 784, 880, 988, 1046, 880, 784, 880],
+      leadWave: "triangle", leadVol: 0.06, stepMs: 200, once: true,
+    },
+    match: {
+      bass: [110, 110, 110, 110, 110, 110, 110, 110],
+      lead: [440, 523, 587, 523, 440, 494, 523, 440, 392, 440, 523, 587, 659, 587, 523, 494],
+      bassWave: "triangle", leadWave: "square", bassVol: 0.032, leadVol: 0.02, stepMs: 220,
+    },
+    win: {
+      bass: [131, 131, 165, 165, 196, 196, 262, 262, 196, 196, 165, 165, 131, 131, 131, 131],
+      lead: [523, 659, 784, 1046, 784, 1046, 1318, 1046, 784, 1046, 1318, 1568, 1318, 1046, 784, 1046],
+      bassWave: "triangle", leadWave: "square", bassVol: 0.03, leadVol: 0.022, stepMs: 240,
+    },
+    lose: {
+      bass: [98, 98, 98, 98, 87, 87, 87, 87, 73, 73, 73, 73, 65, 65, 65, 65],
+      lead: [440, 415, 392, 349, 330, 311, 294, 262, 247, 233, 220, 208, 196, 185, 175, 165],
+      bassWave: "triangle", leadWave: "triangle", bassVol: 0.03, leadVol: 0.02, stepMs: 400,
+    },
+    cup: {
+      bass: [98, 131, 110, 147, 131, 165, 147, 196],
+      lead: [392, 523, 494, 587, 523, 659, 587, 698, 659, 784, 698, 880, 784, 988, 880, 1046],
+      bassWave: "triangle", leadWave: "square", bassVol: 0.03, leadVol: 0.02, stepMs: 300,
+    },
+  };
+  // Music runs through its own gain so a switch can fade instead of clicking.
+  function musicBus() {
+    if (!ctx) return null;
+    if (!musicGain) {
+      musicGain = ctx.createGain();
+      musicGain.gain.value = 1;
+      musicGain.connect(ctx.destination);
+    }
+    return musicGain;
+  }
+  function trackLength(t) { return Math.max((t.bass || []).length, (t.lead || []).length, 1); }
   function musicTick() {
-    if (!musicOn || !ctx) return;
-    const b = BASS[musicStep % BASS.length];
-    const l = LEAD[musicStep % LEAD.length];
-    tone(b, 0.22, "triangle", 0.03);
-    tone(l, 0.14, "square", 0.018, 0.02);
+    if (!musicOn || !ctx || !track) return;
+    const bus = musicBus();
+    const bass = track.bass || [];
+    const lead = track.lead || [];
+    if (bass.length) {
+      const b = bass[musicStep % bass.length];
+      if (b) tone(b, 0.22, track.bassWave || "triangle", track.bassVol != null ? track.bassVol : 0.03, 0, null, bus);
+    }
+    if (lead.length) {
+      const l = lead[musicStep % lead.length];
+      if (l) tone(l, 0.14, track.leadWave || "square", track.leadVol != null ? track.leadVol : 0.018, 0.02, null, bus);
+    }
     musicStep++;
+    if (track.once && musicStep >= trackLength(track)) stopMusic();
   }
   function startMusic() {
-    if (!ctx || !musicOn || musicTimer) return;
-    musicTimer = setInterval(musicTick, 300);
+    if (!ctx || !musicOn || !track || musicTimer) return;
+    if (track.once && musicStep >= trackLength(track)) musicStep = 0;
+    musicTimer = setInterval(musicTick, track.stepMs || 300);
     musicTick();
   }
   function stopMusic() {
     if (musicTimer) clearInterval(musicTimer);
     musicTimer = null;
+  }
+  function fadeMusic(done) {
+    const bus = musicBus();
+    if (!bus || !ctx) { done(); return; }
+    const now = ctx.currentTime;
+    try {
+      bus.gain.cancelScheduledValues(now);
+      bus.gain.setValueAtTime(bus.gain.value, now);
+      bus.gain.linearRampToValueAtTime(0.0001, now + 0.06);
+    } catch (err) { done(); return; }
+    setTimeout(() => {
+      try { bus.gain.cancelScheduledValues(ctx.currentTime); bus.gain.setValueAtTime(1, ctx.currentTime); } catch (err) { /* fail soft */ }
+      done();
+    }, 70);
+  }
+  // Switch songs. Idempotent: a no-op when the same track is already playing,
+  // so menu sub-screens and round ticks never restart the song. Unknown tracks
+  // fall back to the menu theme.
+  function setTrack(id) {
+    const next = TRACKS[id] ? id : "menu";
+    if (next === trackId) return;
+    trackId = next;
+    track = TRACKS[next];
+    musicStep = 0;
+    const wasPlaying = !!musicTimer;
+    stopMusic();
+    if (ctx && musicOn) { if (wasPlaying) fadeMusic(startMusic); else startMusic(); }
   }
   function unlock() {
     if (unlocked) return;
@@ -308,17 +406,31 @@ const Sound = (() => {
     return voicesOn;
   }
   return {
-    unlock, sfx, toggleMusic, ensure, startMusic, stopMusic,
+    unlock, sfx, toggleMusic, ensure, startMusic, stopMusic, setTrack,
     loadVoices, voice, toggleVoices,
     isOn: () => musicOn,
     isUnlocked: () => unlocked,
     isVoicesOn: () => voicesOn,
+    currentTrack: () => trackId,
     setEnabled(on) { musicOn = on; if (on) startMusic(); else stopMusic(); },
   };
 })();
 
 /* ---------------------------------------------------------------- screens */
 const SCREEN_NAMES = ["boot", "attract", "menu", "solo", "mode", "players", "mods", "roundintro", "match", "win", "lose", "cup", "about"];
+// Screen -> song. Menu sub-screens share one theme; every other screen has its
+// own. showScreen() is the single place that applies this map.
+const SCREEN_TRACKS = {
+  boot: "boot",
+  attract: "attract",
+  menu: "menu", mode: "menu", players: "menu", mods: "menu", about: "menu",
+  solo: "solo",
+  roundintro: "roundintro",
+  match: "match",
+  win: "win",
+  lose: "lose",
+  cup: "cup",
+};
 let currentScreenName = "boot";
 function showScreen(name) {
   if (!SCREEN_NAMES.includes(name)) name = "attract";
@@ -327,6 +439,7 @@ function showScreen(name) {
     if (el) el.hidden = candidate !== name;
   }
   currentScreenName = name;
+  Sound.setTrack(SCREEN_TRACKS[name] || name);
   if (name !== "match" && name !== "solo") stopRunning();
   if (!["match", "attract", "win"].includes(name)) stopConfetti();
   showMatchBanner(false);
