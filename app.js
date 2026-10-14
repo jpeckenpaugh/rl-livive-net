@@ -2064,36 +2064,54 @@ function renderHazardGrid() {
     const soon = !!h.soon;
     const chips = h.levels.map((lvl, i) => {
       const idx = i + 1;
-      const active = level === idx;
-      return `<button class="hazard-chip${active ? " active" : ""}" type="button" data-hazard="${h.key}" data-level="${idx}" aria-pressed="${active}"${soon ? " disabled" : ""}>${escapeHtml(lvl.label)}</button>`;
+      const active = on && level === idx;
+      return `<button class="hazard-chip${active ? " active" : ""}" type="button" data-hazard="${h.key}" data-level="${idx}" aria-pressed="${active}"${(!on || soon) ? " disabled" : ""}>${escapeHtml(lvl.label)}</button>`;
     }).join("");
-    const offChip = `<button class="hazard-chip${!on ? " active" : ""}" type="button" data-hazard="${h.key}" data-level="0" aria-pressed="${!on}"${soon ? " disabled" : ""}>OFF</button>`;
     return `<div class="hazard-card${on ? " armed" : ""}${soon ? " soon" : ""}" data-hazard="${h.key}">
-      <span class="hazard-name">${h.name}${soon ? ' <em class="hazard-soon-tag">SOON</em>' : ""}</span>
+      <div class="hazard-head">
+        <span class="hazard-name">${h.name}${soon ? ' <em class="hazard-soon-tag">SOON</em>' : ""}</span>
+        <button class="hazard-toggle${on ? " on" : ""}" type="button" data-hazard="${h.key}" aria-pressed="${on}" aria-label="${h.name} ${on ? "on" : "off"}"${soon ? " disabled" : ""}>${on ? "ON" : "OFF"}</button>
+      </div>
       <span class="hazard-effect">${escapeHtml(h.effect)}</span>
       <span class="hazard-explain">${escapeHtml(h.explain || "")}</span>
-      <div class="hazard-levels" role="group" aria-label="${h.name} intensity">${offChip}${chips}</div>
+      <div class="hazard-levels" role="group" aria-label="${h.name} intensity">${chips}</div>
     </div>`;
   }).join("");
   updateModsSummary();
+  grid.querySelectorAll(".hazard-toggle").forEach((btn) => {
+    btn.addEventListener("click", () => toggleHazard(btn.dataset.hazard));
+  });
   grid.querySelectorAll(".hazard-chip").forEach((btn) => {
     btn.addEventListener("click", () => setHazardLevel(btn.dataset.hazard, Number(btn.dataset.level)));
   });
+}
+/* Off/On is a separate switch. Turning a hazard on arms its first level; turning
+ * it off clears it. The config chips below set the intensity directly. */
+function toggleHazard(key) {
+  if (!match) return;
+  const h = HAZARD_BY_KEY[key];
+  if (!h || !h.real) return;
+  const on = hazLevel(key, match.hazards) > 0;
+  match.hazards[key] = on ? 0 : 1;
+  if (!on) swapGravityIfNeeded(key);
+  Sound.sfx("menu");
+  renderHazardGrid();
 }
 function setHazardLevel(key, level) {
   if (!match) return;
   const h = HAZARD_BY_KEY[key];
   if (!h || !h.real) return;
-  const max = h.levels.length;
-  const next = clamp(Number(level) || 0, 0, max);
-  // Clicking OFF or the already-active chip clears the hazard.
-  match.hazards[key] = next === hazLevel(key, match.hazards) ? 0 : next;
-  if (h.levels.length && hazOn(key, match.hazards) && (key === "lowgrav" || key === "heavygrav")) {
-    const other = key === "lowgrav" ? "heavygrav" : "lowgrav";
-    if (hazOn(other, match.hazards)) { match.hazards[other] = 0; flashGravity(); }
-  }
+  const next = clamp(Number(level) || 0, 0, h.levels.length);
+  match.hazards[key] = next;
+  if (next > 0) swapGravityIfNeeded(key);
   Sound.sfx("menu");
   renderHazardGrid();
+}
+/* Only one gravity hazard can be armed at a time. */
+function swapGravityIfNeeded(key) {
+  if (key !== "lowgrav" && key !== "heavygrav") return;
+  const other = key === "lowgrav" ? "heavygrav" : "lowgrav";
+  if (hazOn(other, match.hazards)) { match.hazards[other] = 0; flashGravity(); }
 }
 function flashGravity() {
   const seedEl = $("mods-seed");

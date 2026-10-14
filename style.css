@@ -1025,6 +1025,32 @@ select:focus-visible, input:focus-visible, .cab-btn:focus-visible, .controller:f
 .hazard-card.armed { border-color: var(--gold); background: #1d1a10; }
 .hazard-card.armed .hazard-name { color: var(--gold); }
 .hazard-card.soon { opacity: .55; }
+/* House Rules header: title + seed share one line. */
+.mods-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  width: 100%;
+}
+.mods-head .seed-chip { margin: 0; text-align: center; }
+/* Off/On is its own switch; intensity chips sit below and grey out when off. */
+.hazard-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.hazard-toggle {
+  flex: 0 0 auto;
+  min-width: 54px;
+  padding: 4px 10px;
+  border: 2px solid #3d4b56;
+  background: #1b252e;
+  color: var(--muted);
+  cursor: pointer;
+  font: var(--type-micro)/1 var(--display);
+  letter-spacing: 1px;
+}
+.hazard-toggle.on { color: var(--void); background: var(--p3); border-color: var(--p3); }
+.hazard-toggle:disabled { opacity: .45; cursor: not-allowed; }
+.hazard-toggle:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .loadout-summary { font: var(--type-small)/1 var(--body); letter-spacing: 1px; color: var(--amber); margin: 16px 0 0; }
 
 /* --------------------------------------------------------------- round intro */
