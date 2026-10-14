@@ -73,6 +73,13 @@ ATTRIBUTION = {
         "role": "contender",
         "source": "https://github.com/XinliYu/RL-Projects",
     },
+    "ashbellett": {
+        "label": "Bellett DQN",
+        "author": "Bellett",
+        "algorithm": "DQN",
+        "role": "contender",
+        "source": "https://github.com/ashbellett/reinforcement-learning",
+    },
 }
 
 
