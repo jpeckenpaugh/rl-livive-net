@@ -79,25 +79,25 @@ const HAZARDS = [
     key: "wind", name: "WIND SHEAR", effect: "sideways draft", real: true,
     explain: "A side wind pushes every lander at the same time.",
     levels: [
-      { tag: "MILD", label: "MILD (0.7)", force: 0.7 },
-      { tag: "STD", label: "STD (1.4)", force: 1.4 },
-      { tag: "GALE", label: "GALE (2.1)", force: 2.1 },
+      { tag: "MILD", label: "MILD", force: 0.7 },
+      { tag: "STEADY", label: "STEADY", force: 1.4 },
+      { tag: "GALE", label: "GALE", force: 2.1 },
     ],
   },
   {
     key: "lowgrav", name: "LOW GRAVITY", effect: "floaty", real: true,
     explain: "Gravity is weaker; the lander floats and descends slowly.",
     levels: [
-      { tag: "MILD", label: "MILD (-8.0)", gravity: -8.0 },
-      { tag: "STRONG", label: "STRONG (-6.5)", gravity: -6.5 },
+      { tag: "MILD", label: "MILD", gravity: -8.0 },
+      { tag: "STRONG", label: "STRONG", gravity: -6.5 },
     ],
   },
   {
     key: "heavygrav", name: "HEAVY GRAVITY", effect: "heavy", real: true,
     explain: "Gravity is stronger; the lander falls fast.",
     levels: [
-      { tag: "MILD", label: "MILD (-12.0)", gravity: -12.0 },
-      { tag: "STRONG", label: "STRONG (-14.5)", gravity: -14.5 },
+      { tag: "MILD", label: "MILD", gravity: -12.0 },
+      { tag: "STRONG", label: "STRONG", gravity: -14.5 },
     ],
   },
   {
@@ -1066,9 +1066,12 @@ function showRoundResult(info) {
     if (kickerEl) kickerEl.textContent = "ROUND COMPLETE";
   }
   if (humanLost) {
-    title = `SO CLOSE — ${Math.abs(info.margin || 0).toFixed(1)} BEHIND`;
+    const behind = Math.abs(info.margin || 0).toFixed(1);
+    title = `SO CLOSE — ${behind} BEHIND`;
     color = "#94A3B8";
     if (kickerEl) kickerEl.textContent = pick(TAGLINES.loser);
+    // The loser's screen must not show a bare "+" margin, which reads as a win.
+    margin = `WINNER'S MARGIN +${behind} PTS`;
   }
   if (winnerEl) { winnerEl.textContent = title; winnerEl.style.color = color; }
   if (marginEl) marginEl.textContent = margin;

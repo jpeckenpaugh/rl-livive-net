@@ -81,12 +81,6 @@ a { color: var(--gold); }
   letter-spacing: 3px;
   color: var(--slate);
 }
-.marquee-plate {
-  text-align: right;
-  font: 8px/1.6 var(--body);
-  letter-spacing: 1px;
-  color: #9fb0c0;
-}
 .music-toggle {
   position: absolute;
   top: 10px;
@@ -643,7 +637,6 @@ select:focus-visible, input:focus-visible, .cab-btn:focus-visible, .controller:f
   body { font-size: 19px; }
   .cabinet-marquee { grid-template-columns: 1fr; text-align: center; gap: 8px; }
   .marquee-studio { text-align: center; }
-  .marquee-plate { text-align: center; }
   .music-toggle { position: static; justify-self: center; right: auto; top: auto; }
   .attract-screen { grid-template-columns: 1fr; grid-template-areas: "hero" "panel" "demo"; }
   .attract-title { font-size: 26px; }
