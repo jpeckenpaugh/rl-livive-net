@@ -49,21 +49,66 @@ const ARENAS = ["SALVAGE STATION-04", "MARE SERENITATIS", "TYCHO RIM", "SHACKLET
 
 /* ---------------------------------------------------------------- hazards */
 const GRAVITY_DEFAULT = -10.0;
-const GRAVITY_LOW = -6.5;
-const GRAVITY_HEAVY = -14.5;
-const SENSOR_RATE = 0.10;
-const THRUSTER_RATE = 0.10;
-const WIND_FORCE = 1.4;
 
+/*
+ * Graduated hazards. Each entry owns an ordered `levels` list; a hazard's
+ * selected level is stored as an index in `match.hazards` (0 = OFF, 1..n =
+ * index into `levels`). Every level carries a short `tag` (round-intro text)
+ * and a chip `label`, plus one effect field (`rate`, `force`, or `gravity`).
+ */
 const HAZARDS = [
-  { key: "sensor", name: "SENSOR GLITCH", effect: "stale readings", real: true },
-  { key: "thruster", name: "FAULTY THRUSTERS", effect: "drop / misfire", real: true },
-  { key: "lowgrav", name: "LOW GRAVITY", effect: "floaty", real: true },
-  { key: "heavygrav", name: "HEAVY GRAVITY", effect: "heavy", real: true },
-  { key: "wind", name: "WIND SHEAR", effect: "sideways draft", real: true },
-  { key: "meteor", name: "METEOR SHOWER", effect: "incoming!", real: false, soon: true },
+  {
+    key: "sensor", name: "SENSOR GLITCH", effect: "stale readings", real: true,
+    explain: "Your gauges freeze for a step; the pilot reads one stale reading.",
+    levels: [
+      { tag: "5%", label: "5%", rate: 0.05 },
+      { tag: "10%", label: "10%", rate: 0.10 },
+      { tag: "20%", label: "20%", rate: 0.20 },
+    ],
+  },
+  {
+    key: "thruster", name: "FAULTY THRUSTERS", effect: "drop / misfire", real: true,
+    explain: "A commanded burn is dropped, or a coasting lander misfires.",
+    levels: [
+      { tag: "5%", label: "5%", rate: 0.05 },
+      { tag: "10%", label: "10%", rate: 0.10 },
+      { tag: "20%", label: "20%", rate: 0.20 },
+    ],
+  },
+  {
+    key: "wind", name: "WIND SHEAR", effect: "sideways draft", real: true,
+    explain: "A side wind pushes every lander at the same time.",
+    levels: [
+      { tag: "MILD", label: "MILD (0.7)", force: 0.7 },
+      { tag: "STD", label: "STD (1.4)", force: 1.4 },
+      { tag: "GALE", label: "GALE (2.1)", force: 2.1 },
+    ],
+  },
+  {
+    key: "lowgrav", name: "LOW GRAVITY", effect: "floaty", real: true,
+    explain: "Gravity is weaker; the lander floats and descends slowly.",
+    levels: [
+      { tag: "MILD", label: "MILD (-8.0)", gravity: -8.0 },
+      { tag: "STRONG", label: "STRONG (-6.5)", gravity: -6.5 },
+    ],
+  },
+  {
+    key: "heavygrav", name: "HEAVY GRAVITY", effect: "heavy", real: true,
+    explain: "Gravity is stronger; the lander falls fast.",
+    levels: [
+      { tag: "MILD", label: "MILD (-12.0)", gravity: -12.0 },
+      { tag: "STRONG", label: "STRONG (-14.5)", gravity: -14.5 },
+    ],
+  },
+  {
+    key: "meteor", name: "METEOR SHOWER", effect: "incoming!", real: false, soon: true,
+    explain: "Rocks across the descent corridor. Still in the workshop.",
+    levels: [],
+  },
 ];
-const RECOMMENDED = ["sensor", "thruster"];
+/* Recommended match = sensor 10% + thruster 10% (the old binary defaults). */
+const RECOMMENDED = { sensor: 2, thruster: 2 };
+const HAZARD_KEYS = { sensor: 0, thruster: 0, wind: 0, lowgrav: 0, heavygrav: 0 };
 const HAZARD_BY_KEY = Object.fromEntries(HAZARDS.map((h) => [h.key, h]));
 
 /* ---------------------------------------------------------------- helpers */
@@ -89,21 +134,40 @@ function hashSeed(seed, t) {
   h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
   return (h ^ (h >>> 13)) >>> 0;
 }
+/* Selected hazard level: 0 = OFF, 1..n = index into the hazard's levels. */
+function hazLevel(key, hz) {
+  const table = hz || (match && match.hazards) || HAZARD_KEYS;
+  return table[key] || 0;
+}
+function hazOn(key, hz) { return hazLevel(key, hz) > 0; }
+function hazSetting(key, hz) {
+  const def = HAZARD_BY_KEY[key];
+  const level = hazLevel(key, hz);
+  return def && def.levels[level - 1] ? def.levels[level - 1] : null;
+}
+function hazRate(key, hz) { const s = hazSetting(key, hz); return s && typeof s.rate === "number" ? s.rate : 0; }
+function hazForce(key, hz) { const s = hazSetting(key, hz); return s && typeof s.force === "number" ? s.force : 0; }
+function hazTag(key, hz) { const s = hazSetting(key, hz); return s ? s.tag : ""; }
+function gravityFor(hz) {
+  const low = hazSetting("lowgrav", hz);
+  if (low) return low.gravity;
+  const heavy = hazSetting("heavygrav", hz);
+  if (heavy) return heavy.gravity;
+  return GRAVITY_DEFAULT;
+}
 /* One shared decision per physics step, identical for every pilot. */
-function hazardAt(seed, t, armed) {
+function hazardAt(seed, t, hz) {
   const rng = mulberry32(hashSeed(seed, t));
-  const sensor = armed.has("sensor") && rng() < SENSOR_RATE;
-  const thrusterFault = armed.has("thruster") && rng() < THRUSTER_RATE;
+  // Always draw the same rolls in the same order so every pilot sees the same sky.
+  const sensorRoll = rng();
+  const thrusterRoll = rng();
   const thrusterKind = rng() < 0.5 ? "drop" : "misfire";
   const misfireAction = 1 + Math.floor(rng() * 3);
   const windRoll = rng();
-  const wind = armed.has("wind") ? (windRoll * 2 - 1) * WIND_FORCE : 0;
+  const sensor = hazOn("sensor", hz) && sensorRoll < hazRate("sensor", hz);
+  const thrusterFault = hazOn("thruster", hz) && thrusterRoll < hazRate("thruster", hz);
+  const wind = hazOn("wind", hz) ? (windRoll * 2 - 1) * hazForce("wind", hz) : 0;
   return { sensor, thrusterFault, thrusterKind, misfireAction, wind };
-}
-function gravityFor(armed) {
-  if (armed.has("lowgrav")) return GRAVITY_LOW;
-  if (armed.has("heavygrav")) return GRAVITY_HEAVY;
-  return GRAVITY_DEFAULT;
 }
 /* A fault step drops every commanded burn; coasting pilots misfire identically. */
 function applySharedThrusterFault(requested, fault) {
@@ -207,7 +271,7 @@ const Sound = (() => {
 })();
 
 /* ---------------------------------------------------------------- screens */
-const SCREEN_NAMES = ["boot", "attract", "menu", "solo", "mode", "players", "mods", "roundintro", "match", "result", "replay", "win", "lose", "cup"];
+const SCREEN_NAMES = ["boot", "attract", "menu", "solo", "mode", "players", "mods", "roundintro", "match", "win", "lose", "cup", "about"];
 let currentScreenName = "boot";
 function showScreen(name) {
   if (!SCREEN_NAMES.includes(name)) name = "attract";
@@ -217,7 +281,9 @@ function showScreen(name) {
   }
   currentScreenName = name;
   if (name !== "match" && name !== "solo") stopRunning();
-  if (!["match", "attract", "result", "win"].includes(name)) stopConfetti();
+  if (!["match", "attract", "win"].includes(name)) stopConfetti();
+  showMatchBanner(false);
+  resetMenuFocus();
   window.scrollTo({ top: 0, behavior: "auto" });
 }
 function setStatus(message) {
@@ -390,23 +456,6 @@ function drawScene(canvas, ctx, scene, action, pcolor) {
   }
   ctx.restore();
 }
-/* Synthetic lander for replay (terrain + pad + recorded observation). */
-function drawReplayScene(canvas, ctx, template, obs, action, pcolor) {
-  if (!template) return;
-  drawScene(canvas, ctx, { terrain: template.terrain, pad: template.pad, bodies: [], observation: obs }, action, pcolor);
-  if (!obs) return;
-  const w = canvas.width, h = canvas.height;
-  const x = w / 2 + obs[0] * (w / 2), y = h - (obs[1] * VIEWPORT_HALF_H + 8.1) * SCALE;
-  ctx.save(); ctx.translate(x, y); ctx.rotate(obs[4]);
-  ctx.fillStyle = pcolor || "#e4ebef"; ctx.strokeStyle = "#aab7c0"; ctx.lineWidth = 1.5;
-  const hull = [[-14, 17], [-17, 0], [-17, -10], [17, -10], [17, 0], [14, 17]].map(([px, py]) => [px * (SCALE / 30) * 0.66, -py * (SCALE / 30) * 0.66]);
-  ctx.beginPath(); ctx.moveTo(hull[0][0], hull[0][1]);
-  for (let i = 1; i < hull.length; i++) ctx.lineTo(hull[i][0], hull[i][1]);
-  ctx.closePath(); ctx.fill(); ctx.stroke();
-  if (action === 2) { ctx.fillStyle = "#FF9D5C"; ctx.beginPath(); ctx.moveTo(-5, 12); ctx.lineTo(0, 26); ctx.lineTo(5, 12); ctx.fill(); }
-  ctx.restore();
-}
-
 /* ---------------------------------------------------------------- confetti */
 const confettiLayers = [];
 function startConfetti(canvas, colorHex) {
@@ -649,21 +698,27 @@ function initializePanels() {
     const plate = document.createElement("strong"); plate.className = "model-name";
     const place = document.createElement("span"); place.className = "placement";
     head.append(plate, place);
+    const viewport = document.createElement("div"); viewport.className = "multi-sim-viewport";
     const canvas = document.createElement("canvas"); canvas.width = 600; canvas.height = 400;
     canvas.setAttribute("aria-label", `Pilot ${i + 1} flight`);
+    const lanePlace = document.createElement("div"); lanePlace.className = "lane-place"; lanePlace.hidden = true;
+    const lanePlaceNum = document.createElement("span"); lanePlaceNum.className = "lane-place-num";
+    const lanePlaceLabel = document.createElement("span"); lanePlaceLabel.className = "lane-place-label";
+    lanePlace.append(lanePlaceNum, lanePlaceLabel);
+    viewport.append(canvas, lanePlace);
     const foot = document.createElement("div"); foot.className = "multi-sim-reward";
     const status = document.createElement("span"); status.className = "sim-outcome";
     foot.append(status);
-    card.append(head, canvas, foot);
+    card.append(head, viewport, foot);
     board.append(card);
     multiSims.push({
       index: i, el: card, plate, place, status, canvas, ctx: canvas.getContext("2d"),
+      lanePlace, lanePlaceNum, lanePlaceLabel,
       state: null, prevObservation: null, action: 0, reward: 0, done: false,
-      outcome: "FLYING", steps: 0, placement: null, pilot: null, replay: [],
+      outcome: "FLYING", steps: 0, placement: null, pilot: null,
     });
   }
 }
-function visiblePilots() { return match ? match.pilots : []; }
 function drawPanels() {
   if (!match) return;
   for (const sim of multiSims) {
@@ -676,6 +731,14 @@ function drawPanels() {
     sim.el.style.setProperty("--pilot-color", sim.pilot.color);
     sim.place.textContent = sim.placement ? placeText(sim.placement) : "";
     sim.place.className = `placement${sim.placement === 1 ? " gold" : sim.placement ? " ranked" : ""}`;
+    // Big lane-place overlay: only shown once the round is ranked.
+    const showPlace = !!sim.placement && match.phase === "roundComplete";
+    sim.lanePlace.hidden = !showPlace;
+    if (showPlace) {
+      sim.lanePlace.style.setProperty("--pilot-color", sim.pilot.color);
+      sim.lanePlaceNum.textContent = String(sim.placement);
+      sim.lanePlaceLabel.textContent = placeText(sim.placement).toUpperCase();
+    }
     const roundPts = sim.reward;
     if (sim.done) {
       sim.status.textContent = `${sim.outcome} · ROUND ${roundPts.toFixed(1)} · TOTAL ${(stats ? stats.total + roundPts : roundPts).toFixed(1)} pts`;
@@ -704,26 +767,27 @@ function shortName(label) {
   return label.split(/\s+/)[0].toUpperCase().slice(0, 10);
 }
 
-function newMatch({ mode, slotModels, totalRounds, armed }) {
+function newMatch({ mode, slotModels, totalRounds, hazards }) {
   const pilots = slotModels.map((mid, slot) => makePilot(slot, mid));
   const slotCount = pilots.length;
   const teams = mode === "versus" ? [[0], [1]] : mode === "doubles" ? [[0, 1], [2, 3]] : null;
   const bestOf = mode === "versus" || mode === "doubles" ? 3 : 0;
+  const hazardState = { ...HAZARD_KEYS, ...(hazards || {}) };
   return {
     mode, pilots, slotCount, teams, bestOf,
     totalRounds: mode === "cup" ? totalRounds : bestOf,
     round: 0, roundWins: teams ? [0, 0] : null,
     stats: pilots.map(() => ({ total: 0, wins: 0, lands: 0, placements: [] })),
-    armed: new Set(armed),
+    hazards: hazardState,
     seedBase: (Math.floor(Date.now() / 1000) ^ 0x1f3a5c7) >>> 0,
-    phase: "idle", roundSteps: 0, gravity: gravityFor(new Set(armed)),
-    replay: null, lastRound: null, champion: null, humanSlot: pilots.findIndex((p) => p.human),
+    phase: "idle", roundSteps: 0, gravity: gravityFor(hazardState),
+    lastRound: null, champion: null, humanSlot: pilots.findIndex((p) => p.human),
   };
 }
 
 async function prepareMatch(matchConfig) {
   match = newMatch(matchConfig);
-  for (const sim of multiSims) { sim.pilot = null; sim.replay = []; }
+  for (const sim of multiSims) { sim.pilot = null; sim.placement = null; }
   const needed = match.slotCount;
   for (let i = 0; i < needed; i++) {
     multiSims[i].pilot = match.pilots[i];
@@ -741,14 +805,20 @@ async function prepareMatch(matchConfig) {
   if (touch) touch.hidden = match.humanSlot < 0;
 }
 
+function hazardIntroText() {
+  const active = HAZARDS.filter((h) => hazOn(h.key, match.hazards) && !h.soon);
+  if (!active.length) return "CLEAN SKY — NO HAZARDS.";
+  return `${active.map((h) => `${h.name} ${hazTag(h.key, match.hazards)}`).join(" · ")} — SAME SKY. SAME HAZARDS.`;
+}
+
 function beginRound() {
   match.round += 1;
   match.roundSteps = 0;
-  match.gravity = gravityFor(match.armed);
+  match.gravity = gravityFor(match.hazards);
   const seed = (match.seedBase + match.round * 2654435761) >>> 0;
   match.roundSeed = seed;
   for (const sim of multiSims) {
-    sim.done = false; sim.reward = 0; sim.action = 0; sim.steps = 0; sim.placement = null; sim.outcome = "FLYING"; sim.replay = [];
+    sim.done = false; sim.reward = 0; sim.action = 0; sim.steps = 0; sim.placement = null; sim.outcome = "FLYING";
   }
   const arena = ARENAS[(match.round - 1) % ARENAS.length];
   match.arena = arena;
@@ -757,7 +827,7 @@ function beginRound() {
   $("roundintro-round").textContent = `ROUND ${match.round}`;
   $("roundintro-arena").textContent = arena;
   $("roundintro-announcer").textContent = pick(TAGLINES.roundCall).replace("{n}", String(match.round));
-  $("roundintro-hazards").textContent = match.armed.size ? `${[...match.armed].map((k) => HAZARD_BY_KEY[k].name).join(" · ")} — SAME SKY. SAME HAZARDS.` : "CLEAN SKY — NO HAZARDS.";
+  $("roundintro-hazards").textContent = hazardIntroText();
   showScreen("roundintro");
   runCountdown(async () => {
     await resetRoundEnvs(seed);
@@ -786,8 +856,7 @@ async function resetRoundEnvs(seed) {
     if (!sim.pilot) continue;
     sim.state = scenes[i];
     sim.prevObservation = Array.from(scenes[i].observation);
-    sim.reward = 0; sim.action = 0; sim.done = false; sim.steps = 0; sim.replay = [];
-    match.stats[sim.pilot.slot].replayTemplate = { terrain: scenes[i].terrain, pad: scenes[i].pad };
+    sim.reward = 0; sim.action = 0; sim.done = false; sim.steps = 0;
   }
   match.accumulator = 0;
 }
@@ -817,7 +886,7 @@ function activeSims() { return multiSims.filter((s) => s.pilot && !s.done); }
 
 async function advanceMatchStep() {
   const t = match.roundSteps;
-  const fault = hazardAt(match.roundSeed, t, match.armed);
+  const fault = hazardAt(match.roundSeed, t, match.hazards);
   const actions = multiSims.map(() => 0);
   const groups = new Map();
   for (const sim of activeSims()) {
@@ -850,8 +919,6 @@ async function advanceMatchStep() {
     if (!result || !sim.pilot) continue;
     const before = Array.from(sim.state.observation);
     sim.prevObservation = before;
-    sim.replay.push({ obs: result.state.observation, action: sim.action });
-    if (sim.replay.length > 220) sim.replay.shift();
     sim.state = result.state;
     sim.reward += result.reward;
     sim.steps += 1;
@@ -868,7 +935,6 @@ function matchAction(code, value) { return pressed.has(code) ? value : null; }
 
 function roundComplete() { return activeSims().length === 0; }
 
-function scoreOf(sim) { return sim.reward; }
 function landingBonus(sim) { return sim.outcome === "LANDED" ? 1 : 0; }
 function compareSims(a, b) {
   if (Math.abs(a.reward - b.reward) < 0.001) {
@@ -888,10 +954,11 @@ function finishRound() {
   match.phase = "roundComplete";
   match.simBySlot = {};
   for (const sim of multiSims) if (sim.pilot) match.simBySlot[sim.pilot.slot] = sim;
-  // replay: keep the winner's (or best) timeline
   const ranked = multiSims.filter((s) => s.pilot).slice().sort(compareSims);
-  match.replay = ranked.length ? { template: match.stats[ranked[0].pilot.slot].replayTemplate, frames: ranked[0].replay, color: ranked[0].pilot.color } : null;
+  // Every mode gets a full 1..N placement so the lanes can crown their pilots.
+  ranked.forEach((sim, idx) => { sim.placement = idx + 1; });
 
+  let info;
   if (match.teams) {
     const s0 = teamScore(match, 0), s1 = teamScore(match, 1);
     let winner = s0 > s1 ? 0 : s1 > s0 ? 1 : -1;
@@ -899,77 +966,78 @@ function finishRound() {
       const l0 = teamLanded(match, 0) ? 1 : 0, l1 = teamLanded(match, 1) ? 1 : 0;
       if (l0 !== l1) winner = l0 > l1 ? 0 : 1;
     }
-    match.roundWins[winner === -1 ? 0 : winner] += winner === -1 ? 0 : 1;
-    for (const sim of multiSims) {
-      if (!sim.pilot) continue;
+    if (winner !== -1) match.roundWins[winner] += 1;
+    for (const sim of ranked) {
       const st = match.stats[sim.pilot.slot];
       st.total += sim.reward;
+      st.placements.push(sim.placement);
       if (sim.outcome === "LANDED") st.lands += 1;
       const team = match.teams.findIndex((t) => t.includes(sim.pilot.slot));
       if (winner !== -1 && team === winner) st.wins += 1;
     }
-    const margin = Math.abs(s0 - s1);
-    const championTeam = winner;
-    showRoundResult({ winnerTeam: championTeam, margin, scores: [s0, s1], landed0: teamLanded(match, 0), landed1: teamLanded(match, 1) });
+    info = { winnerTeam: winner, margin: Math.abs(s0 - s1), scores: [s0, s1], landed0: teamLanded(match, 0), landed1: teamLanded(match, 1) };
   } else {
-    ranked.forEach((sim, idx) => {
-      sim.placement = idx + 1;
+    for (const sim of ranked) {
       const stats = match.stats[sim.pilot.slot];
       stats.total += sim.reward;
-      stats.placements.push(idx + 1);
+      stats.placements.push(sim.placement);
       if (sim.outcome === "LANDED") stats.lands += 1;
-      if (idx === 0) stats.wins += 1;
-    });
-    const w = ranked[0];
-    showRoundResult({ winnerTeam: null, winnerSlot: w.pilot.slot, margin: ranked[0].reward - (ranked[1]?.reward || 0), scores: ranked.map((s) => s.reward), cup: true });
+      if (sim.placement === 1) stats.wins += 1;
+    }
+    info = { winnerTeam: null, winnerSlot: ranked[0].pilot.slot, margin: ranked[0].reward - (ranked[1]?.reward || 0), scores: ranked.map((s) => s.reward), cup: true };
   }
   drawPanels();
+  updateMatchPips();
+  showRoundResult(info);
 }
 
+/* Round end lands on the 4-lane board: big place numbers + a continue banner. */
 function showRoundResult(info) {
   const humanLost = match.humanSlot >= 0 && !humanWonRound(info);
-  const banner = $("result-kicker");
-  const winnerEl = $("result-winner");
-  const marginEl = $("result-margin");
+  const kickerEl = $("match-banner-kicker");
+  const winnerEl = $("match-banner-winner");
+  const marginEl = $("match-banner-margin");
   let title, margin, color;
   if (info.cup) {
     const p = match.pilots[info.winnerSlot];
     title = `ROUND ${match.round} — ${p.shortName}`;
     color = p.color;
     margin = `+${Math.max(0, info.margin).toFixed(1)} PTS`;
-    if (banner) banner.textContent = `ROUND ${match.round} COMPLETE`;
+    if (kickerEl) kickerEl.textContent = `ROUND ${match.round} COMPLETE`;
   } else if (info.winnerTeam === null || info.winnerTeam === -1) {
     title = `ROUND ${match.round} COMPLETE`;
     color = "#94A3B8";
     margin = "DEAD HEAT";
+    if (kickerEl) kickerEl.textContent = "ROUND COMPLETE";
   } else {
     const slots = match.teams[info.winnerTeam];
     const lead = match.pilots[slots[0]];
     title = `ROUND ${match.round} — ${slots.map((s) => match.pilots[s].shortName).join(" + ")}`;
     color = lead.color;
     margin = `+${info.margin.toFixed(1)} PTS`;
-    if (banner) banner.textContent = info.landed0 && info.landed1 ? "" : "SAME SKY. SAME HAZARDS.";
+    if (kickerEl) kickerEl.textContent = "ROUND COMPLETE";
   }
   if (humanLost) {
     title = `SO CLOSE — ${Math.abs(info.margin || 0).toFixed(1)} BEHIND`;
     color = "#94A3B8";
-    banner && (banner.textContent = pick(TAGLINES.loser));
+    if (kickerEl) kickerEl.textContent = pick(TAGLINES.loser);
   }
   if (winnerEl) { winnerEl.textContent = title; winnerEl.style.color = color; }
   if (marginEl) marginEl.textContent = margin;
-  // pips strip
-  const strip = $("result-pips");
-  if (strip) {
-    strip.innerHTML = multiSims.filter((s) => s.pilot).map((s) => {
-      const st = match.stats[s.pilot.slot];
-      return `<span class="strip-item" style="--pilot-color:${s.pilot.color}"><b>P${s.pilot.slot + 1} ${escapeHtml(s.pilot.shortName)}</b><span>${s.reward.toFixed(0)} pts · total ${st.total.toFixed(0)}</span></span>`;
-    }).join("");
-  }
-  const celebrate = !humanLost && info.winnerTeam !== -1;
-  const replayBtn = $("result-replay");
-  if (replayBtn) replayBtn.textContent = "REPLAY THE FINISH ▶";
-  showScreen("result");
-  if (celebrate) { Sound.sfx("land"); startConfetti($("result-confetti"), color); }
+  const matchOver = match.teams ? (match.roundWins[0] >= 2 || match.roundWins[1] >= 2) : match.round >= match.totalRounds;
+  const cont = $("match-continue");
+  if (cont) { cont.textContent = matchOver ? "RESULTS ▶" : "NEXT ROUND ▶"; cont.hidden = false; }
+  if (currentScreenName !== "match") showScreen("match");
+  showMatchBanner(true, matchOver);
+  if (!humanLost && info.winnerTeam !== -1) { Sound.sfx("land"); startConfetti($("match-confetti"), color); }
+}
+
+function showMatchBanner(visible, isOver) {
+  const banner = $("match-banner");
+  if (!banner) return;
+  banner.hidden = !visible;
+  const prompt = $("match-banner-prompt");
+  if (prompt) prompt.textContent = isOver ? "PRESS START · SPACE / ENTER FOR RESULTS" : "PRESS START · SPACE / ENTER";
 }
 
 function humanWonRound(info) {
@@ -979,7 +1047,11 @@ function humanWonRound(info) {
   return info.winnerTeam === humanTeam;
 }
 
-function afterReplay() {
+function continueAfterRound() {
+  if (!match || match.phase !== "roundComplete") return;
+  stopConfetti();
+  const cont = $("match-continue"); if (cont) cont.hidden = true;
+  showMatchBanner(false);
   const matchOver = match.teams ? (match.roundWins[0] >= 2 || match.roundWins[1] >= 2) : match.round >= match.totalRounds;
   if (!matchOver) {
     if (match.mode === "cup") openMods("round");
@@ -1145,27 +1217,38 @@ function openMods(context) {
 function renderHazardGrid() {
   const grid = $("mods-grid"); if (!grid || !match) return;
   grid.innerHTML = HAZARDS.map((h) => {
-    const armed = match.armed.has(h.key);
-    const soon = h.soon;
-    return `<button class="hazard-card${armed ? " armed" : ""}${soon ? " soon" : ""}" data-hazard="${h.key}" type="button" ${soon ? "disabled" : ""} aria-pressed="${armed}">
-      <span class="hazard-name">${h.name}</span>
-      <span class="hazard-effect">${h.effect}</span>
-      <span class="hazard-action">${soon ? "SOON" : armed ? "REMOVE ✕" : "ADD +"}</span>
-    </button>`;
+    const level = hazLevel(h.key, match.hazards);
+    const on = level > 0;
+    const soon = !!h.soon;
+    const chips = h.levels.map((lvl, i) => {
+      const idx = i + 1;
+      const active = level === idx;
+      return `<button class="hazard-chip${active ? " active" : ""}" type="button" data-hazard="${h.key}" data-level="${idx}" aria-pressed="${active}"${soon ? " disabled" : ""}>${escapeHtml(lvl.label)}</button>`;
+    }).join("");
+    const offChip = `<button class="hazard-chip${!on ? " active" : ""}" type="button" data-hazard="${h.key}" data-level="0" aria-pressed="${!on}"${soon ? " disabled" : ""}>OFF</button>`;
+    return `<div class="hazard-card${on ? " armed" : ""}${soon ? " soon" : ""}" data-hazard="${h.key}">
+      <span class="hazard-name">${h.name}${soon ? ' <em class="hazard-soon-tag">SOON</em>' : ""}</span>
+      <span class="hazard-effect">${escapeHtml(h.effect)}</span>
+      <span class="hazard-explain">${escapeHtml(h.explain || "")}</span>
+      <div class="hazard-levels" role="group" aria-label="${h.name} intensity">${offChip}${chips}</div>
+    </div>`;
   }).join("");
   updateModsSummary();
-  grid.querySelectorAll("[data-hazard]").forEach((btn) => btn.addEventListener("click", () => toggleHazard(btn.dataset.hazard)));
+  grid.querySelectorAll(".hazard-chip").forEach((btn) => {
+    btn.addEventListener("click", () => setHazardLevel(btn.dataset.hazard, Number(btn.dataset.level)));
+  });
 }
-function toggleHazard(key) {
+function setHazardLevel(key, level) {
   if (!match) return;
   const h = HAZARD_BY_KEY[key];
   if (!h || !h.real) return;
-  if (match.armed.has(key)) {
-    match.armed.delete(key);
-  } else {
-    if (key === "lowgrav" && match.armed.has("heavygrav")) { match.armed.delete("heavygrav"); flashGravity(); }
-    else if (key === "heavygrav" && match.armed.has("lowgrav")) { match.armed.delete("lowgrav"); flashGravity(); }
-    match.armed.add(key);
+  const max = h.levels.length;
+  const next = clamp(Number(level) || 0, 0, max);
+  // Clicking OFF or the already-active chip clears the hazard.
+  match.hazards[key] = next === hazLevel(key, match.hazards) ? 0 : next;
+  if (h.levels.length && hazOn(key, match.hazards) && (key === "lowgrav" || key === "heavygrav")) {
+    const other = key === "lowgrav" ? "heavygrav" : "lowgrav";
+    if (hazOn(other, match.hazards)) { match.hazards[other] = 0; flashGravity(); }
   }
   Sound.sfx("menu");
   renderHazardGrid();
@@ -1177,11 +1260,18 @@ function flashGravity() {
   seedEl.textContent = "GRAVITY SWAPPED.";
   setTimeout(() => { seedEl.textContent = original; }, 1200);
 }
+function hazardStarRating() {
+  const total = Object.keys(HAZARD_KEYS).reduce((sum, key) => sum + hazLevel(key, match.hazards), 0);
+  if (total === 0) return "☆☆☆";
+  if (total <= 2) return "★☆☆";
+  if (total <= 5) return "★★☆";
+  return "★★★";
+}
 function updateModsSummary() {
   const el = $("mods-summary"); if (!el || !match) return;
-  const k = match.armed.size;
-  const stars = k === 0 ? "☆☆☆" : k <= 2 ? "★☆☆" : k <= 4 ? "★★☆" : "★★★";
-  el.textContent = k === 0 ? "CLEAN SKY — NO HAZARDS." : `HAZARDS ARMED: ${k} · DIFFICULTY ${stars}`;
+  const armed = HAZARDS.filter((h) => hazOn(h.key, match.hazards)).length;
+  const stars = hazardStarRating();
+  el.textContent = armed === 0 ? "CLEAN SKY — NO HAZARDS." : `HAZARDS ARMED: ${armed} · DIFFICULTY ${stars}`;
 }
 
 /* ============================================================================
@@ -1228,33 +1318,8 @@ function defaultModelFor(slot, mode) {
 let cabinetMode = "versus";
 
 /* ============================================================================
- * REPLAY / ATTRACT ANIMATION
+ * ATTRACT ANIMATION
  * ==========================================================================*/
-let replayState = null;
-function startReplay() {
-  if (!match || !match.replay) { afterReplay(); return; }
-  replayState = { ...match.replay, i: 0, last: 0 };
-  const canvas = $("replay-canvas");
-  showScreen("replay");
-  const ctx = canvas.getContext("2d");
-  drawReplayScene(canvas, ctx, replayState.template, replayState.frames[0]?.obs, replayState.frames[0]?.action, replayState.color);
-}
-function replayFrame(dtMs) {
-  if (!replayState) return;
-  const canvas = $("replay-canvas"); if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-  replayState.last += dtMs;
-  const frameMs = 1000 / FPS;
-  if (replayState.last >= frameMs) {
-    replayState.last = 0;
-    replayState.i += 1;
-    if (replayState.i >= replayState.frames.length) { replayState.i = replayState.frames.length - 1; }
-  }
-  const frame = replayState.frames[replayState.i];
-  if (frame) drawReplayScene(canvas, ctx, replayState.template, frame.obs, frame.action, replayState.color);
-}
-
-let attractState = null;
 function attractFrame(now) {
   const canvas = $("attract-canvas"); if (!canvas) return;
   const ctx = canvas.getContext("2d");
@@ -1297,7 +1362,6 @@ function frame(now) {
   }
   if (currentScreenName === "solo") soloFrame(elapsed);
   if (currentScreenName === "match") matchLoop(elapsed);
-  if (currentScreenName === "replay") replayFrame(elapsed);
 }
 
 async function matchLoop(elapsedMs) {
@@ -1346,6 +1410,10 @@ function bindTouch(pad, set) {
 function setupTouchForMatch() { /* pads bound once in boot */ }
 
 window.addEventListener("keydown", (event) => {
+  // Menu screens own the arrow keys for navigation; let native select/input work.
+  if (MENU_SCREENS.has(currentScreenName)) return;
+  const tag = document.activeElement ? document.activeElement.tagName : "";
+  if (tag === "SELECT" || tag === "INPUT" || tag === "TEXTAREA") return;
   if (["ArrowLeft", "ArrowRight", "ArrowUp"].includes(event.code)) {
     event.preventDefault();
     pressed.add(event.code);
@@ -1480,9 +1548,101 @@ function startMatchFromCabinet() {
   const slotCount = mode === "versus" ? 2 : 4;
   const slotModels = playerModels.slice(0, slotCount).map((m, i) => m || defaultModelFor(i, mode));
   match = null;
-  prepareMatch({ mode, slotModels, totalRounds: mode === "cup" ? 10 : 3, armed: [...RECOMMENDED] }).then(() => {
+  prepareMatch({ mode, slotModels, totalRounds: mode === "cup" ? 10 : 3, hazards: { ...RECOMMENDED } }).then(() => {
     openMods(mode === "cup" ? "round" : "match");
   }).catch((err) => { setStatus("CABINET FAULT"); console.error(err); });
+}
+
+/* ---- cabinet menu keyboard navigation ---- */
+/*
+ * Screens where the cabinet owns the arrow keys for menu navigation.
+ * Gameplay screens (solo/match) keep their flight controls instead.
+ */
+const MENU_SCREENS = new Set(["attract", "menu", "mode", "players", "mods", "cup", "lose", "about"]);
+let menuIndex = 0;
+
+function focusableItems() {
+  const screen = $(`screen-${currentScreenName}`);
+  if (!screen) return [];
+  return Array.from(screen.querySelectorAll("button, a[href], select, input, [tabindex]:not([tabindex='-1'])"))
+    .filter((el) => !el.disabled && !el.hidden && !el.closest("[hidden]"));
+}
+function clearMenuFocus() {
+  document.querySelectorAll(".kbd-focus").forEach((el) => el.classList.remove("kbd-focus"));
+}
+function setMenuFocus(items) {
+  clearMenuFocus();
+  if (!items.length) return;
+  menuIndex = clamp(menuIndex, 0, items.length - 1);
+  const el = items[menuIndex];
+  el.classList.add("kbd-focus");
+  try { el.focus({ preventScroll: true }); } catch (err) { el.focus(); }
+  if (el.scrollIntoView) el.scrollIntoView({ block: "nearest" });
+}
+/* Reset the highlight to the first item each time a menu screen opens. */
+function resetMenuFocus() {
+  clearMenuFocus();
+  if (!MENU_SCREENS.has(currentScreenName)) return;
+  menuIndex = 0;
+  setMenuFocus(focusableItems());
+}
+function moveMenuFocus(delta) {
+  const items = focusableItems();
+  if (!items.length) return;
+  const current = items.indexOf(document.activeElement);
+  menuIndex = current >= 0 ? current + delta : menuIndex + delta;
+  menuIndex = ((menuIndex % items.length) + items.length) % items.length;
+  setMenuFocus(items);
+}
+/* Left/Right step within a hazard level-chip row. */
+function stepChipFocus(delta) {
+  const active = document.activeElement;
+  if (!active || !active.classList.contains("hazard-chip")) return false;
+  const chips = Array.from(active.parentElement.querySelectorAll(".hazard-chip")).filter((c) => !c.disabled);
+  const i = chips.indexOf(active);
+  if (i < 0) return false;
+  const items = focusableItems();
+  const idx = items.indexOf(chips[(i + delta + chips.length) % chips.length]);
+  if (idx < 0) return false;
+  menuIndex = idx;
+  setMenuFocus(items);
+  return true;
+}
+function activateMenuItem() {
+  const items = focusableItems();
+  const focused = document.activeElement;
+  const el = (focused && items.includes(focused)) ? focused : items[menuIndex];
+  if (!el) return;
+  if (el.tagName === "SELECT") { el.focus(); return; }
+  el.click();
+}
+function handleMenuKey(e) {
+  if (!MENU_SCREENS.has(currentScreenName)) return false;
+  const tag = document.activeElement ? document.activeElement.tagName : "";
+  // Text inputs keep fully native behaviour.
+  if (tag === "INPUT" || tag === "TEXTAREA") return false;
+  // A focused <select> keeps Left/Right/typing native, but Up/Down still walk the
+  // cabinet menu so the "USE UP/DOWN" promise holds (Left/Right changes the value).
+  if (tag === "SELECT") {
+    if (e.code === "ArrowUp") { e.preventDefault(); moveMenuFocus(-1); return true; }
+    if (e.code === "ArrowDown") { e.preventDefault(); moveMenuFocus(1); return true; }
+    return false;
+  }
+  if (e.code === "ArrowUp") { e.preventDefault(); moveMenuFocus(-1); return true; }
+  if (e.code === "ArrowDown") { e.preventDefault(); moveMenuFocus(1); return true; }
+  if (e.code === "ArrowLeft" && stepChipFocus(-1)) { e.preventDefault(); return true; }
+  if (e.code === "ArrowRight" && stepChipFocus(1)) { e.preventDefault(); return true; }
+  if (e.code === "Space" || e.code === "Enter") {
+    e.preventDefault();
+    if (currentScreenName === "attract") {
+      const start = $("start-game");
+      if (start && !start.disabled) start.click();
+      return true;
+    }
+    activateMenuItem();
+    return true;
+  }
+  return false;
 }
 
 function wireEvents() {
@@ -1521,19 +1681,15 @@ function wireEvents() {
   const modsProceed = $("mods-proceed");
   if (modsProceed) modsProceed.addEventListener("click", () => { Sound.sfx("select"); beginRound(); });
   const modsClear = $("mods-clear");
-  if (modsClear) modsClear.addEventListener("click", () => { if (match) { match.armed.clear(); Sound.sfx("menu"); renderHazardGrid(); } });
+  if (modsClear) modsClear.addEventListener("click", () => { if (match) { match.hazards = { ...HAZARD_KEYS }; Sound.sfx("menu"); renderHazardGrid(); } });
   const modsRec = $("mods-recommend");
-  if (modsRec) modsRec.addEventListener("click", () => { if (match) { match.armed = new Set(RECOMMENDED); Sound.sfx("menu"); renderHazardGrid(); } });
+  if (modsRec) modsRec.addEventListener("click", () => { if (match) { match.hazards = { ...HAZARD_KEYS, ...RECOMMENDED }; Sound.sfx("menu"); renderHazardGrid(); } });
   const modsBack = $("mods-back");
   if (modsBack) modsBack.addEventListener("click", () => { Sound.sfx("menu"); renderPlayers(); showScreen("players"); });
 
-  const resultReplay = $("result-replay");
-  if (resultReplay) resultReplay.addEventListener("click", () => { Sound.sfx("select"); startReplay(); });
-  const replayContinue = $("replay-continue");
-  if (replayContinue) replayContinue.addEventListener("click", () => { Sound.sfx("select"); stopConfetti(); afterReplay(); });
+  const matchContinue = $("match-continue");
+  if (matchContinue) matchContinue.addEventListener("click", () => { Sound.sfx("select"); continueAfterRound(); });
 
-  const cupReplay = $("cup-replay");
-  if (cupReplay) cupReplay.addEventListener("click", () => { Sound.sfx("select"); if (match && match.replay) startReplay(); });
   const cupContinue = $("cup-continue");
   if (cupContinue) cupContinue.addEventListener("click", () => { Sound.sfx("coin"); showScreen("attract"); attractTaglineAt = 0; });
   const cupSave = $("cup-save");
@@ -1565,15 +1721,17 @@ function wireEvents() {
   const modelSelect = $("model-select");
   if (modelSelect) modelSelect.addEventListener("change", () => { updateSoloButtons(); updatePilotSource(); });
   window.addEventListener("keydown", (e) => {
-    if (e.code === "ArrowDown" && currentScreenName === "solo") { e.preventDefault(); requestSoloReset(); }
-    if (currentScreenName === "win" && (e.code === "Enter" || e.code === "Space")) { e.preventDefault(); advanceFromWin(); }
+    if (e.code === "ArrowDown" && currentScreenName === "solo") { e.preventDefault(); requestSoloReset(); return; }
+    if (currentScreenName === "win" && (e.code === "Enter" || e.code === "Space")) { e.preventDefault(); advanceFromWin(); return; }
+    if (currentScreenName === "match" && match && match.phase === "roundComplete" && (e.code === "Enter" || e.code === "Space")) { e.preventDefault(); continueAfterRound(); return; }
+    handleMenuKey(e);
   });
   document.addEventListener("visibilitychange", () => { if (document.hidden) pressed.clear(); });
 }
 
 function rematch() {
   if (!match) return;
-  const cfg = { mode: match.mode, slotModels: match.pilots.map((p) => p.modelId), totalRounds: match.totalRounds, armed: [...match.armed] };
+  const cfg = { mode: match.mode, slotModels: match.pilots.map((p) => p.modelId), totalRounds: match.totalRounds, hazards: { ...match.hazards } };
   match = null;
   prepareMatch(cfg).then(() => {
     if (cfg.mode === "cup") openMods("round");
