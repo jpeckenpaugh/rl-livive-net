@@ -52,6 +52,27 @@ ATTRIBUTION = {
         "role": "contender",
         "source": "https://github.com/cpow-89/Extended-Deep-Q-Learning-For-Open-AI-Gym-Environments",
     },
+    "udacity": {
+        "label": "Udacity DQN",
+        "author": "Udacity",
+        "algorithm": "DQN",
+        "role": "contender",
+        "source": "https://github.com/udacity/deep-reinforcement-learning",
+    },
+    "nikhilbarhate": {
+        "label": "Barhate Actor-Critic",
+        "author": "Barhate",
+        "algorithm": "Actor-Critic",
+        "role": "contender",
+        "source": "https://github.com/nikhilbarhate99/Actor-Critic",
+    },
+    "xinliyu": {
+        "label": "Xinli Yu DQN",
+        "author": "Xinli Yu",
+        "algorithm": "DQN",
+        "role": "contender",
+        "source": "https://github.com/XinliYu/RL-Projects",
+    },
 }
 
 
