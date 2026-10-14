@@ -18,7 +18,7 @@ from pathlib import Path
 # in the branding spec (AIA-8) may appear; do not invent new sources.
 ATTRIBUTION = {
     "ppo": {
-        "label": "seekdepth jpeckenpaugh",
+        "label": "jpeckenpaugh sb3 PPO",
         "author": "seekdepth",
         "algorithm": "PPO",
         "role": "default",

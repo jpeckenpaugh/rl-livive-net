@@ -810,7 +810,7 @@ function setStatus(message) {
 
 /* ---------------------------------------------------------------- model catalog */
 const MODEL_FALLBACK = [{
-  id: "ppo", label: "seekdepth jpeckenpaugh", url: "models/ppo-LunarLander-v2.onnx",
+  id: "ppo", label: "jpeckenpaugh sb3 PPO", url: "models/ppo-LunarLander-v2.onnx",
   author: "seekdepth", algorithm: "PPO", role: "default",
   source: "https://huggingface.co/seekdepth/ppo-LunarLander-v2",
 }];
