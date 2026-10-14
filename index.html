@@ -136,29 +136,22 @@
         </section>
 
         <!-- ============================= SOLO ============================ -->
-        <section id="screen-solo" class="screen" hidden aria-label="Solo flight">
-          <div class="screen-head solo-head">
-            <span class="screen-kicker">SOLO FLIGHT</span>
-            <span class="context-chip" id="solo-pilot-chip">HUMAN PILOT</span>
-          </div>
-          <div class="game">
-            <div class="game-head">
-              <div><span class="live-dot"></span><span id="solo-status" aria-live="polite">WARMING UP THE CABINET</span></div>
-              <span id="solo-episode">FLIGHT —</span>
-            </div>
-            <div id="solo-screen-wrap" class="screen-wrap">
-              <canvas id="solo-canvas" width="600" height="400" aria-label="Lunar lander simulation"></canvas>
-              <div id="solo-overlay" class="overlay"><div class="loader"></div><p id="solo-message">Rolling out the pilots…</p></div>
-            </div>
-            <div id="solo-telemetry" class="telemetry">
-              <div><span class="label">ALTITUDE</span><strong id="altitude">—</strong><small>m</small></div>
-              <div><span class="label">HORIZONTAL</span><strong id="hspeed">—</strong><small>m/s</small></div>
-              <div><span class="label">VERTICAL</span><strong id="vspeed">—</strong><small>m/s</small></div>
-              <div><span class="label">SCORE</span><strong id="reward">—</strong><small>pts</small></div>
-            </div>
-            <div class="controls-row">
-              <div id="controls-hint" class="hint controls-hint"><kbd>←</kbd><kbd>→</kbd> steer <span class="sep">·</span> <kbd>↑</kbd> main engine <span class="sep">·</span> <kbd>↓</kbd> reset</div>
-              <button id="solo-reset" class="cab-btn cab-btn-ghost" type="button" disabled>RESET ↻</button>
+        <section id="screen-solo" class="screen solo-screen" hidden aria-label="Solo flight">
+          <div id="solo-stage" class="solo-stage">
+            <canvas id="solo-canvas" width="600" height="400" aria-label="Lunar lander simulation"></canvas>
+            <div id="solo-overlay" class="overlay solo-overlay"><div class="loader"></div><p id="solo-message">Rolling out the pilots…</p></div>
+            <div class="solo-hud">
+              <div class="hud-top">
+                <div class="hud-readings">
+                  <div class="hud-read"><span>ALTITUDE</span><strong id="altitude">—</strong><small>m</small></div>
+                  <div class="hud-read"><span>HORIZONTAL SPEED</span><strong id="hspeed">—</strong><small>m/s</small></div>
+                  <div class="hud-read"><span>VERTICAL SPEED</span><strong id="vspeed">—</strong><small>m/s</small></div>
+                  <div class="hud-read"><span>FLIGHT TIME</span><strong id="flight-time">—</strong><small>s</small></div>
+                  <div class="hud-read"><span>SCORE</span><strong id="reward">—</strong><small>pts</small></div>
+                </div>
+                <span id="solo-pilot-chip" class="hud-chip">HUMAN PILOT</span>
+              </div>
+              <span id="solo-status" class="hud-status" aria-live="polite">WARMING UP THE CABINET</span>
             </div>
           </div>
         </section>

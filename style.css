@@ -757,47 +757,84 @@ a { color: var(--gold); }
 .pilot-tag.default { color: var(--void); background: var(--gold); border-color: var(--amber); }
 
 /* ------------------------------------------------------------------- solo */
-.game { border: 2px solid #34414d; background: #161e28; overflow: hidden; }
-.game-head, .match-head {
+/* Solo Flight is a full-bleed playfield. The game canvas fills the whole 3:2
+   monitor (the monitor and the native canvas are both 3:2, so there is no
+   crop), and the readings float over it as a HUD. There is no chrome between
+   the cabinet screen and the game. */
+.cabinet-screen > .solo-screen {
+  position: absolute;
+  inset: 0;
+  display: block;
+  padding: 0;
+  overflow: hidden;
+  background: var(--void);
+}
+.solo-stage { position: absolute; inset: 0; }
+.solo-stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: var(--void);
+  image-rendering: pixelated;
+}
+.solo-hud {
+  position: absolute;
+  inset: 0;
+  padding: 14px 16px;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+.hud-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; width: 100%; }
+.hud-readings { display: flex; flex-wrap: wrap; gap: 8px; }
+.hud-read {
+  display: grid;
+  gap: 2px;
+  padding: 8px 11px;
+  min-width: 96px;
+  background: rgba(10, 11, 16, 0.66);
+  border: 1px solid #2a3742;
+}
+.hud-read span { font: var(--type-micro)/1 var(--display); letter-spacing: 0.5px; color: var(--slate); }
+.hud-read strong { font: var(--type-title-sm)/1 var(--body); color: var(--amber); }
+.hud-read small { color: var(--muted); font-size: var(--type-micro); }
+.hud-chip {
+  flex: 0 0 auto;
+  font: var(--type-caption)/1 var(--display);
+  letter-spacing: 1px;
+  color: var(--gold);
+  background: rgba(10, 11, 16, 0.72);
+  border: 1px solid #3d4b56;
+  padding: 7px 10px;
+}
+.hud-status {
+  padding: 7px 14px;
+  font: var(--type-small)/1 var(--display);
+  letter-spacing: 1px;
+  color: var(--amber);
+  background: rgba(10, 11, 16, 0.72);
+  border: 1px solid #3d4b56;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Match screen header keeps the old game-head look. */
+.match-head {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 12px 15px; border-bottom: 1px solid var(--line);
   font: var(--type-small)/1 var(--body); letter-spacing: 1px; color: var(--slate);
 }
 .live-dot { display: inline-block; width: 8px; height: 8px; background: var(--p3); margin-right: 8px; }
-.controller-row { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(0, 660px); gap: 8px 18px; padding: 14px 15px; border-bottom: 1px solid var(--line); background: #111820; }
-.controller-label { display: grid; gap: 5px; }
-.controller-label .label { color: var(--muted); font: var(--type-tiny)/1 var(--display); }
-.controller-label strong { font: var(--type-head)/1.2 var(--body); }
-.controller-options { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
-.controller { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; min-height: 44px; border: 2px solid #3d4b56; background: #1b252e; color: #dce4e9; cursor: pointer; font-family: var(--body); }
-.controller span { font-size: var(--type-body-lg); color: #a3b0bb; }
-.controller .controller-name { font-size: var(--type-body-lg); text-align: left; }
-.controller.active { border-color: var(--p3); color: var(--p3); background: #202b27; }
-.controller.active span { color: var(--p3); }
-.controller:disabled { cursor: default; opacity: .75; }
-.controller-help { grid-column: 2; margin: 0; color: var(--muted); font-size: var(--type-lead); }
-.screen-wrap { position: relative; padding: 15px 15px 0; }
-.screen-wrap canvas { display: block; height: auto; background: var(--void); box-shadow: 0 0 0 2px #2a3742; }
-.overlay { position: absolute; inset: 15px 15px 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: #0a0b10e0; color: var(--slate); text-align: center; padding: 20px; }
+.overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: #0a0b10e0; color: var(--slate); text-align: center; padding: 20px; }
 .overlay[hidden], .overlay.hidden { display: none; }
 .overlay.error { color: var(--p4); }
 .overlay:not(.loading) .loader { display: none; }
 .loader { width: 34px; height: 34px; border: 3px solid #2a3742; border-top-color: var(--gold); animation: spin .8s steps(4) infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.telemetry { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin: 15px 15px 0; border: 1px solid var(--line); overflow: hidden; }
-.telemetry > div { padding: 10px 12px; background: #0f151d; display: grid; gap: 3px; }
-.telemetry .label { font: var(--type-tiny)/1 var(--display); color: var(--muted); }
-.telemetry strong { font: var(--type-title-sm)/1 var(--body); color: var(--amber); }
-.telemetry small { color: var(--muted); font-size: var(--type-body); }
-.controls-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 15px 15px; }
-.controls-hint { color: var(--muted); font: var(--type-body-lg)/1 var(--body); }
 kbd { border: 1px solid #3d4b56; padding: 2px 6px; background: #101820; color: var(--text); font-family: var(--body); }
-.model-select { display: grid; gap: 4px; color: var(--muted); font: var(--type-tiny)/1 var(--display); }
-.model-select[hidden] { display: none; }
-.pilot-source { display: flex; gap: 8px; margin: 0; color: var(--muted); font-size: var(--type-body); }
-.pilot-source[hidden] { display: none; }
-.pilot-source a { color: #cbd5dd; text-decoration: none; }
-.pilot-source-label { color: var(--muted); }
 select, input {
   border: 2px solid #3e4b56; background: #202a34; color: var(--text);
   padding: 9px 10px; font-family: var(--body); font-size: var(--type-subhead);

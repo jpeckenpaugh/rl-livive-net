@@ -961,9 +961,9 @@ function fitPixelCanvas(canvas, nativeW = NATIVE_W, nativeH = NATIVE_H) {
 }
 
 function fitAllPixelCanvases() {
-  // The attract demo is a full-bleed CSS background (object-fit: cover) and
-  // keeps its native 600x400 backing store, so it is not fitted here.
-  fitPixelCanvas($("solo-canvas"));
+  // Full-bleed playfields — the attract demo and the solo game view — are CSS
+  // backgrounds (canvas at 100% of a 3:2 monitor, 1:1 with the native 600x400
+  // backing store), so they are not integer-fitted here.
   document.querySelectorAll(".multi-sim-card canvas").forEach((c) => fitPixelCanvas(c));
 }
 
@@ -1126,6 +1126,8 @@ function updateSoloTelemetry() {
   $("hspeed").textContent = obs[2].toFixed(2);
   $("vspeed").textContent = obs[3].toFixed(2);
   $("reward").textContent = solo.totalReward.toFixed(1);
+  const ft = $("flight-time");
+  if (ft) ft.textContent = (solo.stepIndex * STEP_INTERVAL_MS / 1000).toFixed(1);
 }
 function soloModelId() { return solo.modelId || (catalog[0] && catalog[0].id) || null; }
 function soloModeLabel(mode = solo.controllerMode) {
@@ -1228,7 +1230,6 @@ async function resetSoloEpisode() {
     solo.action = 0; solo.appliedAction = 0;
     solo.prevObservation = Array.from(solo.state.observation);
     solo.stepIndex = 0; solo.accumulator = 0; solo.totalReward = 0; solo.episode += 1;
-    const ep = $("solo-episode"); if (ep) ep.textContent = `FLIGHT ${String(solo.episode).padStart(2, "0")}`;
     updateSoloTelemetry();
     drawScene(soloCanvas, soloCtx, solo.state, solo.appliedAction);
     soloStatus("FLIGHT LIVE"); soloHideOverlay();
