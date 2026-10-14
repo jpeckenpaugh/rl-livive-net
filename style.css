@@ -386,13 +386,23 @@ a { color: var(--gold); }
 .attract-demo canvas { display: block; width: 100%; border: 2px solid var(--line); background: var(--void); image-rendering: pixelated; }
 .attract-demo-badge,
 .attract-demo-pilot,
-.attract-demo-press {
+.attract-demo-press,
+.attract-demo-loading {
   position: absolute;
   font-family: var(--display);
   letter-spacing: 1px;
   pointer-events: none;
   user-select: none;
 }
+.attract-demo-loading {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: var(--type-caption);
+  letter-spacing: 2px;
+  color: var(--slate);
+}
+.attract-demo-loading[hidden] { display: none; }
 .attract-demo-badge {
   top: 10px;
   left: 10px;
@@ -767,7 +777,7 @@ select:focus-visible, input:focus-visible, .cab-btn:focus-visible, .controller:f
   .cab-btn, .controller, .coin-btn, .music-toggle { min-height: 48px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .coin-btn, .celebrate-continue, .match-banner-prompt, .roundintro-count, .boot-lockup, .crash-steam, .loader, .live-dot { animation: none !important; }
+  .coin-btn, .celebrate-continue, .match-banner-prompt, .roundintro-count, .boot-lockup, .crash-steam, .loader, .live-dot, .attract-demo-press { animation: none !important; }
 }
 @media (prefers-reduced-motion: no-preference) {
   .live-dot { animation: bootpulse 2s steps(2) infinite; }

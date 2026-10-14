@@ -1884,7 +1884,14 @@ function updateAttractDemoHud() {
   const label = entry ? (entry.algorithm || entry.label) : attractDemo.pilotId;
   el.textContent = `ATTRACT MODE · ${label}`;
 }
-async function attractStartEpisode() {
+function hideAttractLoading() {
+  const el = $("attract-demo-loading");
+  if (el) el.hidden = true;
+}
+function prefersReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+async function attractStartEpisode(staticOnly = false) {
   if (!simReady || attractDemo.busy) return;
   attractDemo.busy = true;
   try {
@@ -1897,6 +1904,9 @@ async function attractStartEpisode() {
     attractDemo.restartAt = 0;
     updateAttractDemoHud();
     drawScene(attractCanvas, attractCtx, attractDemo.state, attractDemo.action, ATTRACT_LANDER_COLOR);
+    hideAttractLoading();
+    // Reduced motion parks one drawn frame instead of flying a live reel.
+    if (staticOnly) { attractDemo.running = false; return; }
     // Load the episode's pilot (first-party PPO on the first pass) before it flies.
     await ensureModelSession(attractDemo.pilotId);
     attractDemo.running = true;
@@ -1911,6 +1921,11 @@ async function attractStartEpisode() {
 }
 async function attractDemoFrame(elapsedMs) {
   if (currentScreenName !== "attract" || !simReady || attractDemo.busy) return;
+  if (prefersReducedMotion()) {
+    if (attractDemo.state) return;
+    await attractStartEpisode(true);
+    return;
+  }
   if (!attractDemo.running) {
     if (attractDemo.restartAt && performance.now() < attractDemo.restartAt) return;
     await attractStartEpisode();
