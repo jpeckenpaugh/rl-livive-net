@@ -452,7 +452,7 @@ a { color: var(--gold); }
 .controller-label .label { color: var(--muted); font: var(--type-tiny)/1 var(--display); }
 .controller-label strong { font: var(--type-head)/1.2 var(--body); }
 .controller-options { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
-.controller { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; min-height: 44px; border: 2px solid #3d4b56; background: #1b252e; color: #dce4e9; cursor: pointer; }
+.controller { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; min-height: 44px; border: 2px solid #3d4b56; background: #1b252e; color: #dce4e9; cursor: pointer; font-family: var(--body); }
 .controller span { font-size: var(--type-body-lg); color: #a3b0bb; }
 .controller .controller-name { font-size: var(--type-body-lg); text-align: left; }
 .controller.active { border-color: var(--p3); color: var(--p3); background: #202b27; }
