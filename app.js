@@ -1594,7 +1594,8 @@ function updateMatchPips() {
   if (match.teams) {
     el.textContent = match.teams.map((t, i) => `TEAM ${i + 1} ${pip(match.roundWins[i], match.bestOf)}`).join("   ");
   } else {
-    el.textContent = match.pilots.map((p) => `P${p.slot + 1} ${escapeHtml(p.shortName)}`).join("   ");
+    // Cup lanes carry their own name HUD; keep the top line clear.
+    el.textContent = "";
   }
 }
 function pip(wins, best) {
