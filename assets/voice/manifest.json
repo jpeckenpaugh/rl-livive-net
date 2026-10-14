@@ -2,96 +2,646 @@
   "sampleRate": 8000,
   "bits": 8,
   "sourceSampleRate": 22050,
+  "catalogVersion": 2,
   "lines": {
+    "player_1": {
+      "file": "player_1.wav",
+      "text": "Player one.",
+      "duration": 0.592,
+      "rms": 0.2378,
+      "type": "subject",
+      "category": "subject",
+      "priority": 0
+    },
+    "player_2": {
+      "file": "player_2.wav",
+      "text": "Player two.",
+      "duration": 0.72,
+      "rms": 0.2328,
+      "type": "subject",
+      "category": "subject",
+      "priority": 0
+    },
+    "player_3": {
+      "file": "player_3.wav",
+      "text": "Player three.",
+      "duration": 0.731,
+      "rms": 0.2155,
+      "type": "subject",
+      "category": "subject",
+      "priority": 0
+    },
+    "player_4": {
+      "file": "player_4.wav",
+      "text": "Player four.",
+      "duration": 0.766,
+      "rms": 0.1908,
+      "type": "subject",
+      "category": "subject",
+      "priority": 0
+    },
     "coin": {
       "file": "coin.wav",
       "text": "Insert coin.",
-      "duration": 0.755,
-      "rms": 0.23
+      "duration": 0.824,
+      "rms": 0.2347,
+      "type": "system",
+      "category": "system",
+      "priority": 100
     },
     "select": {
       "file": "select.wav",
       "text": "Choose your pilot.",
-      "duration": 1.149,
-      "rms": 0.197
+      "duration": 0.999,
+      "rms": 0.1848,
+      "type": "system",
+      "category": "system",
+      "priority": 100
     },
     "round_one": {
       "file": "round_one.wav",
       "text": "Round one.",
-      "duration": 0.638,
-      "rms": 0.2413
+      "duration": 0.627,
+      "rms": 0.2413,
+      "type": "system",
+      "category": "system",
+      "priority": 60
     },
     "round_two": {
       "file": "round_two.wav",
       "text": "Round two.",
-      "duration": 0.836,
-      "rms": 0.1886
+      "duration": 0.894,
+      "rms": 0.1943,
+      "type": "system",
+      "category": "system",
+      "priority": 60
     },
     "round_three": {
       "file": "round_three.wav",
       "text": "Final round.",
-      "duration": 0.801,
-      "rms": 0.2015
+      "duration": 0.731,
+      "rms": 0.1978,
+      "type": "system",
+      "category": "system",
+      "priority": 60
+    },
+    "take_off": {
+      "file": "take_off.wav",
+      "text": "Take off!",
+      "duration": 0.548,
+      "rms": 0.2117,
+      "type": "event",
+      "category": "round_start",
+      "priority": 60
     },
     "fight": {
       "file": "fight.wav",
       "text": "Fight!",
-      "duration": 0.219,
-      "rms": 0.2164
+      "duration": 0.318,
+      "rms": 0.2346,
+      "type": "event",
+      "category": "round_start",
+      "priority": 60
+    },
+    "here_we_go": {
+      "file": "here_we_go.wav",
+      "text": "Here we go!",
+      "duration": 0.581,
+      "rms": 0.2328,
+      "type": "event",
+      "category": "round_start",
+      "priority": 60
+    },
+    "and_theyre_away": {
+      "file": "and_theyre_away.wav",
+      "text": "And they're away!",
+      "duration": 0.715,
+      "rms": 0.2609,
+      "type": "event",
+      "category": "round_start",
+      "priority": 60
+    },
+    "off_the_pad": {
+      "file": "off_the_pad.wav",
+      "text": "Off the pad!",
+      "duration": 0.854,
+      "rms": 0.2216,
+      "type": "event",
+      "category": "round_start",
+      "priority": 60
+    },
+    "sticks_the_landing": {
+      "file": "sticks_the_landing.wav",
+      "text": "Sticks the landing!",
+      "duration": 0.935,
+      "rms": 0.191,
+      "type": "event",
+      "category": "landing",
+      "priority": 40
+    },
+    "sticks_the_landing_2": {
+      "file": "sticks_the_landing_2.wav",
+      "text": "Sticks it!",
+      "duration": 0.631,
+      "rms": 0.1482,
+      "type": "event",
+      "category": "landing",
+      "priority": 40
+    },
+    "sticks_the_landing_3": {
+      "file": "sticks_the_landing_3.wav",
+      "text": "Nails the landing!",
+      "duration": 0.903,
+      "rms": 0.231,
+      "type": "event",
+      "category": "landing",
+      "priority": 40
+    },
+    "clean_landing": {
+      "file": "clean_landing.wav",
+      "text": "Clean landing!",
+      "duration": 0.712,
+      "rms": 0.2271,
+      "type": "event",
+      "category": "landing",
+      "priority": 40
+    },
+    "touchdown": {
+      "file": "touchdown.wav",
+      "text": "Touchdown!",
+      "duration": 0.515,
+      "rms": 0.1959,
+      "type": "event",
+      "category": "landing",
+      "priority": 40
+    },
+    "goes_down": {
+      "file": "goes_down.wav",
+      "text": "Goes down!",
+      "duration": 0.746,
+      "rms": 0.2346,
+      "type": "event",
+      "category": "crash",
+      "priority": 40
+    },
+    "goes_down_2": {
+      "file": "goes_down_2.wav",
+      "text": "Goes down hard!",
+      "duration": 1.101,
+      "rms": 0.2006,
+      "type": "event",
+      "category": "crash",
+      "priority": 40
+    },
+    "crashes": {
+      "file": "crashes.wav",
+      "text": "Crashes!",
+      "duration": 0.652,
+      "rms": 0.2125,
+      "type": "event",
+      "category": "crash",
+      "priority": 40
+    },
+    "crashes_2": {
+      "file": "crashes_2.wav",
+      "text": "Wrecks it!",
+      "duration": 0.533,
+      "rms": 0.2159,
+      "type": "event",
+      "category": "crash",
+      "priority": 40
+    },
+    "crashes_3": {
+      "file": "crashes_3.wav",
+      "text": "Down in flames!",
+      "duration": 1.209,
+      "rms": 0.2091,
+      "type": "event",
+      "category": "crash",
+      "priority": 40
+    },
+    "takes_the_round": {
+      "file": "takes_the_round.wav",
+      "text": "Takes the round!",
+      "duration": 0.668,
+      "rms": 0.1889,
+      "type": "event",
+      "category": "round_result",
+      "priority": 60
+    },
+    "takes_the_round_2": {
+      "file": "takes_the_round_2.wav",
+      "text": "Takes it!",
+      "duration": 0.484,
+      "rms": 0.1748,
+      "type": "event",
+      "category": "round_result",
+      "priority": 60
+    },
+    "wins": {
+      "file": "wins.wav",
+      "text": "Wins!",
+      "duration": 0.484,
+      "rms": 0.2075,
+      "type": "event",
+      "category": "round_result",
+      "priority": 60
+    },
+    "wins_2": {
+      "file": "wins_2.wav",
+      "text": "Takes the win!",
+      "duration": 0.701,
+      "rms": 0.2365,
+      "type": "event",
+      "category": "round_result",
+      "priority": 60
+    },
+    "wins_3": {
+      "file": "wins_3.wav",
+      "text": "Seals it!",
+      "duration": 0.613,
+      "rms": 0.2315,
+      "type": "event",
+      "category": "round_result",
+      "priority": 60
+    },
+    "team_takes_the_round": {
+      "file": "team_takes_the_round.wav",
+      "text": "The team takes the round!",
+      "duration": 1.062,
+      "rms": 0.2162,
+      "type": "event",
+      "category": "round_result",
+      "priority": 60
+    },
+    "takes_the_lead": {
+      "file": "takes_the_lead.wav",
+      "text": "Takes the lead!",
+      "duration": 0.832,
+      "rms": 0.1937,
+      "type": "event",
+      "category": "lead_change",
+      "priority": 60
+    },
+    "takes_the_lead_2": {
+      "file": "takes_the_lead_2.wav",
+      "text": "Into the lead!",
+      "duration": 0.592,
+      "rms": 0.2504,
+      "type": "event",
+      "category": "lead_change",
+      "priority": 60
+    },
+    "takes_the_lead_3": {
+      "file": "takes_the_lead_3.wav",
+      "text": "New leader!",
+      "duration": 0.559,
+      "rms": 0.267,
+      "type": "event",
+      "category": "lead_change",
+      "priority": 60
+    },
+    "match_point": {
+      "file": "match_point.wav",
+      "text": "Match point!",
+      "duration": 0.591,
+      "rms": 0.2145,
+      "type": "event",
+      "category": "match",
+      "priority": 80
+    },
+    "last_round": {
+      "file": "last_round.wav",
+      "text": "Last round!",
+      "duration": 0.679,
+      "rms": 0.219,
+      "type": "event",
+      "category": "match",
+      "priority": 80
+    },
+    "takes_the_match": {
+      "file": "takes_the_match.wav",
+      "text": "Takes the match!",
+      "duration": 0.817,
+      "rms": 0.1691,
+      "type": "event",
+      "category": "match",
+      "priority": 80
+    },
+    "wins_the_match": {
+      "file": "wins_the_match.wav",
+      "text": "Wins the match!",
+      "duration": 0.892,
+      "rms": 0.1991,
+      "type": "event",
+      "category": "match",
+      "priority": 80
+    },
+    "wins_the_cup": {
+      "file": "wins_the_cup.wav",
+      "text": "Wins the cup!",
+      "duration": 0.697,
+      "rms": 0.2058,
+      "type": "event",
+      "category": "match",
+      "priority": 80
+    },
+    "champion": {
+      "file": "champion.wav",
+      "text": "Champion!",
+      "duration": 0.507,
+      "rms": 0.2315,
+      "type": "event",
+      "category": "match",
+      "priority": 80
+    },
+    "new_challenger": {
+      "file": "new_challenger.wav",
+      "text": "New challenger!",
+      "duration": 0.749,
+      "rms": 0.2301,
+      "type": "event",
+      "category": "match",
+      "priority": 80
     },
     "perfect": {
       "file": "perfect.wav",
       "text": "Perfect!",
-      "duration": 0.508,
-      "rms": 0.1695
-    },
-    "flawless": {
-      "file": "flawless.wav",
-      "text": "Flawless victory!",
-      "duration": 0.939,
-      "rms": 0.1926
+      "duration": 0.467,
+      "rms": 0.168,
+      "type": "event",
+      "category": "round_result",
+      "priority": 60
     },
     "ko": {
       "file": "ko.wav",
       "text": "K. O.!",
-      "duration": 0.343,
-      "rms": 0.2632
+      "duration": 0.475,
+      "rms": 0.2436,
+      "type": "event",
+      "category": "crash",
+      "priority": 60
     },
     "you_win": {
       "file": "you_win.wav",
       "text": "You win!",
-      "duration": 0.43,
-      "rms": 0.264
+      "duration": 0.376,
+      "rms": 0.2833,
+      "type": "event",
+      "category": "match",
+      "priority": 80
     },
     "you_lose": {
       "file": "you_lose.wav",
       "text": "You lose.",
-      "duration": 0.648,
-      "rms": 0.2659
+      "duration": 0.538,
+      "rms": 0.2546,
+      "type": "event",
+      "category": "match",
+      "priority": 80
     },
     "game_over": {
       "file": "game_over.wav",
       "text": "Game over.",
       "duration": 0.886,
-      "rms": 0.1925
-    },
-    "new_challenger": {
-      "file": "new_challenger.wav",
-      "text": "New challenger!",
-      "duration": 0.77,
-      "rms": 0.2341
+      "rms": 0.1875,
+      "type": "event",
+      "category": "match",
+      "priority": 100
     },
     "time_up": {
       "file": "time_up.wav",
       "text": "Time up!",
-      "duration": 0.516,
-      "rms": 0.2248
+      "duration": 0.505,
+      "rms": 0.229,
+      "type": "event",
+      "category": "match",
+      "priority": 80
     },
-    "take_off": {
-      "file": "take_off.wav",
-      "text": "Take off!",
+    "by_a_hair": {
+      "file": "by_a_hair.wav",
+      "text": "By a hair!",
+      "duration": 0.549,
+      "rms": 0.2316,
+      "type": "modifier",
+      "category": "modifier",
+      "priority": 0
+    },
+    "in_a_blowout": {
+      "file": "in_a_blowout.wav",
+      "text": "In a blowout!",
+      "duration": 0.796,
+      "rms": 0.2392,
+      "type": "modifier",
+      "category": "modifier",
+      "priority": 0
+    },
+    "flawless": {
+      "file": "flawless.wav",
+      "text": "Flawless!",
+      "duration": 0.602,
+      "rms": 0.23,
+      "type": "modifier",
+      "category": "modifier",
+      "priority": 0
+    },
+    "clean_sweep": {
+      "file": "clean_sweep.wav",
+      "text": "Clean sweep!",
+      "duration": 0.728,
+      "rms": 0.2484,
+      "type": "modifier",
+      "category": "modifier",
+      "priority": 0
+    },
+    "neck_and_neck": {
+      "file": "neck_and_neck.wav",
+      "text": "Neck and neck!",
       "duration": 0.559,
-      "rms": 0.258
+      "rms": 0.236,
+      "type": "interjection",
+      "category": "color",
+      "priority": 20
+    },
+    "neck_and_neck_2": {
+      "file": "neck_and_neck_2.wav",
+      "text": "Wheel to wheel!",
+      "duration": 0.806,
+      "rms": 0.2627,
+      "type": "interjection",
+      "category": "color",
+      "priority": 20
+    },
+    "all_tied": {
+      "file": "all_tied.wav",
+      "text": "All tied up!",
+      "duration": 0.756,
+      "rms": 0.2498,
+      "type": "interjection",
+      "category": "color",
+      "priority": 20
+    },
+    "all_tied_2": {
+      "file": "all_tied_2.wav",
+      "text": "Nothing between them!",
+      "duration": 1.03,
+      "rms": 0.2136,
+      "type": "interjection",
+      "category": "color",
+      "priority": 20
+    },
+    "closing_in": {
+      "file": "closing_in.wav",
+      "text": "Closing in!",
+      "duration": 0.849,
+      "rms": 0.1963,
+      "type": "interjection",
+      "category": "color",
+      "priority": 20
+    },
+    "closing_in_2": {
+      "file": "closing_in_2.wav",
+      "text": "Closing the gap!",
+      "duration": 0.839,
+      "rms": 0.2007,
+      "type": "interjection",
+      "category": "color",
+      "priority": 20
+    },
+    "down_to_the_wire": {
+      "file": "down_to_the_wire.wav",
+      "text": "Down to the wire!",
+      "duration": 0.781,
+      "rms": 0.2099,
+      "type": "interjection",
+      "category": "color",
+      "priority": 20
+    },
+    "down_to_the_wire_2": {
+      "file": "down_to_the_wire_2.wav",
+      "text": "Down to the wire now!",
+      "duration": 0.971,
+      "rms": 0.2301,
+      "type": "interjection",
+      "category": "color",
+      "priority": 20
+    },
+    "hold_your_breath": {
+      "file": "hold_your_breath.wav",
+      "text": "Hold your breath!",
+      "duration": 0.822,
+      "rms": 0.2055,
+      "type": "interjection",
+      "category": "color",
+      "priority": 20
+    },
+    "no_room_for_error": {
+      "file": "no_room_for_error.wav",
+      "text": "No room for error!",
+      "duration": 0.887,
+      "rms": 0.2561,
+      "type": "interjection",
+      "category": "color",
+      "priority": 20
+    },
+    "what_a_round": {
+      "file": "what_a_round.wav",
+      "text": "What a round!",
+      "duration": 0.602,
+      "rms": 0.2546,
+      "type": "interjection",
+      "category": "color",
+      "priority": 20
+    },
+    "what_a_round_2": {
+      "file": "what_a_round_2.wav",
+      "text": "What a finish!",
+      "duration": 0.581,
+      "rms": 0.216,
+      "type": "interjection",
+      "category": "color",
+      "priority": 20
+    },
+    "unbelievable": {
+      "file": "unbelievable.wav",
+      "text": "Unbelievable!",
+      "duration": 0.728,
+      "rms": 0.255,
+      "type": "interjection",
+      "category": "color",
+      "priority": 20
+    },
+    "houston": {
+      "file": "houston.wav",
+      "text": "Houston, we have some problems!",
+      "duration": 1.718,
+      "rms": 0.2204,
+      "type": "easter_egg",
+      "category": "easter_egg",
+      "priority": 90
+    },
+    "photo_finish": {
+      "file": "photo_finish.wav",
+      "text": "Photo finish!",
+      "duration": 1.235,
+      "rms": 0.2021,
+      "type": "easter_egg",
+      "category": "easter_egg",
+      "priority": 90
+    },
+    "all_four_land": {
+      "file": "all_four_land.wav",
+      "text": "All four land!",
+      "duration": 0.866,
+      "rms": 0.2553,
+      "type": "easter_egg",
+      "category": "easter_egg",
+      "priority": 90
+    },
+    "big_comeback": {
+      "file": "big_comeback.wav",
+      "text": "What a comeback!",
+      "duration": 0.686,
+      "rms": 0.2374,
+      "type": "easter_egg",
+      "category": "easter_egg",
+      "priority": 90
+    },
+    "the_eagle_has_landed": {
+      "file": "the_eagle_has_landed.wav",
+      "text": "The Eagle has landed!",
+      "duration": 1.032,
+      "rms": 0.2163,
+      "type": "easter_egg",
+      "category": "easter_egg",
+      "priority": 90
+    },
+    "one_small_step": {
+      "file": "one_small_step.wav",
+      "text": "One small step!",
+      "duration": 0.892,
+      "rms": 0.2119,
+      "type": "easter_egg",
+      "category": "easter_egg",
+      "priority": 90
+    },
+    "over_the_moon": {
+      "file": "over_the_moon.wav",
+      "text": "Over the moon!",
+      "duration": 0.707,
+      "rms": 0.2933,
+      "type": "easter_egg",
+      "category": "easter_egg",
+      "priority": 90
+    },
+    "the_pad_remembers": {
+      "file": "the_pad_remembers.wav",
+      "text": "The pad remembers.",
+      "duration": 1.09,
+      "rms": 0.194,
+      "type": "easter_egg",
+      "category": "easter_egg",
+      "priority": 90
     }
   }
 }
