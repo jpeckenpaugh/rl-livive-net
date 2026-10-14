@@ -18,7 +18,7 @@ const PILOT_COLORS = ["#31E0F0", "#FF4FD8", "#C7F36B", "#FF9D5C"];
 const PILOT_TOKEN = ["--p1", "--p2", "--p3", "--p4"];
 const TAGLINES = {
   attract: [
-    "INSERT COIN — PRESS START",
+    "PRESS START TO FLY",
     "ONLY ONE LANDS CLEAN.",
     "SAME SKY. SAME HAZARDS. FLY CLEAN.",
     "FOUR PILOTS. ONE PAD. NO MERCY.",
@@ -180,6 +180,7 @@ function applySharedThrusterFault(requested, fault) {
 const Sound = (() => {
   let ctx = null;
   let musicOn = true;
+  let sfxOn = true;
   let unlocked = false;
   let musicTimer = null;
   let musicStep = 0;
@@ -228,7 +229,7 @@ const Sound = (() => {
     freqs.forEach((f, i) => tone(f, dur, type, vol, (delay || 0) + i * 0.02));
   }
   function sfx(name) {
-    if (!ctx) return;
+    if (!ctx || !sfxOn) return;
     switch (name) {
       case "menu": tone(440, 0.05, "square", 0.04); break;
       case "select": chord([660, 990], 0.09, "square", 0.05); break;
@@ -438,10 +439,15 @@ const Sound = (() => {
     if (!voicesOn) stopVoices();
     return voicesOn;
   }
+  function toggleSfx() {
+    sfxOn = !sfxOn;
+    return sfxOn;
+  }
   return {
     unlock, sfx, toggleMusic, ensure, startMusic, stopMusic, setTrack,
-    loadVoices, voice, toggleVoices,
+    loadVoices, voice, toggleVoices, toggleSfx,
     isOn: () => musicOn,
+    isSfxOn: () => sfxOn,
     isUnlocked: () => unlocked,
     isVoicesOn: () => voicesOn,
     currentTrack: () => trackId,
@@ -931,7 +937,8 @@ function fitPixelCanvas(canvas, nativeW = NATIVE_W, nativeH = NATIVE_H) {
 }
 
 function fitAllPixelCanvases() {
-  fitPixelCanvas($("attract-canvas"));
+  // The attract demo is a full-bleed CSS background (object-fit: cover) and
+  // keeps its native 600x400 backing store, so it is not fitted here.
   fitPixelCanvas($("solo-canvas"));
   document.querySelectorAll(".multi-sim-card canvas").forEach((c) => fitPixelCanvas(c));
 }
@@ -944,18 +951,18 @@ function schedulePixelFit() {
 }
 
 /* D5 — scale/letterbox the whole fixed cabinet box. The cabinet never reflows;
- * `--cab-scale = min(vw/(cab-w + margin), vh/(cab-h + margin))`, clamped to 1
- * so desktop shows the cabinet at its native size. Re-run on resize and
- * orientationchange. */
+ * `--cab-scale = min(vw/(cab-w + margin), vh/(cab-h + margin))`. The box scales
+ * up on large displays too, so it always fills as much of the viewport as its
+ * aspect ratio allows instead of sitting at native size with dead space around
+ * it. Re-run on resize and orientationchange. */
 function fitCabinet() {
   const cs = getComputedStyle(document.documentElement);
   const cabW = parseFloat(cs.getPropertyValue("--cab-w")) || 1060;
   const cabH = parseFloat(cs.getPropertyValue("--cab-h")) || 740;
-  const margin = 24;
+  const margin = 8;
   const scale = Math.min(
     window.innerWidth / (cabW + margin),
-    window.innerHeight / (cabH + margin),
-    1
+    window.innerHeight / (cabH + margin)
   );
   document.documentElement.style.setProperty("--cab-scale", String(scale));
 }
@@ -1244,6 +1251,12 @@ async function soloFrame(elapsedMs) {
         soloOverlay(`Flight over · ${solo.totalReward.toFixed(1)} points · reset to fly again`);
       }
       const rb = $("solo-reset"); if (rb) rb.disabled = false;
+      const pilotName = solo.controllerMode === "human" ? "YOU" : (modelLabel(modelSelectValue()) || "AI");
+      addLeaderboardEntry({
+        name: pilotName,
+        value: solo.totalReward,
+        flight: solo.stepIndex * STEP_INTERVAL_MS / 1000,
+      });
     }
   } catch (err) { soloFault(err); }
   finally {
@@ -1696,6 +1709,15 @@ function endMatch() {
     championSlot = ranked[0].slot;
   }
   match.champion = championSlot;
+  const champPilot = match.pilots[championSlot];
+  const champStats = match.stats[championSlot];
+  if (champPilot && champStats) {
+    addLeaderboardEntry({
+      name: champPilot.name,
+      value: champStats.total,
+      cup: match.mode === "cup",
+    });
+  }
   const humanWon = match.humanSlot < 0 ? true : (match.teams ? match.teams.findIndex((t) => t.includes(match.humanSlot)) === (match.roundWins[0] >= 2 ? 0 : 1) : championSlot === match.humanSlot);
   if (match.humanSlot >= 0 && !humanWon) showLose();
   else showWin(championSlot);
@@ -1791,105 +1813,88 @@ function advanceFromWin() {
 }
 
 /* ---------------------------------------------------------------- high scores */
-const HS_KEY = "ll_highscores_v2";
-function loadHighScores() {
-  try { const raw = localStorage.getItem(HS_KEY); const arr = raw ? JSON.parse(raw) : []; return Array.isArray(arr) ? arr : []; }
-  catch (e) { return []; }
+/* Three persistent leaderboards. Nothing is seeded: a fresh browser shows every
+ * board empty, and only real completed games write rows. All of it lives in
+ * localStorage, so the cabinet remembers the player's own results and never
+ * shows fabricated "demo" records. */
+const LB_KEY = "ll_leaderboards_v1";
+function loadBoards() {
+  try {
+    const data = JSON.parse(localStorage.getItem(LB_KEY) || "{}") || {};
+    return {
+      records: Array.isArray(data.records) ? data.records : [],
+      cup: Array.isArray(data.cup) ? data.cup : [],
+      flights: Array.isArray(data.flights) ? data.flights : [],
+    };
+  } catch (e) { return { records: [], cup: [], flights: [] }; }
 }
-function saveHighScores(list) { try { localStorage.setItem(HS_KEY, JSON.stringify(list.slice(0, 5))); } catch (e) {} }
-function qualifiesHighScore(score) {
-  const list = loadHighScores();
-  return score > 0 && (list.length < 5 || score > list[list.length - 1].score);
-}
-function commitHighScore(initials, score, mode) {
-  const list = loadHighScores();
-  list.push({ initials: (initials || "AAA").toUpperCase().slice(0, 3), score: Math.round(score), mode, at: Date.now() });
-  list.sort((a, b) => b.score - a.score);
-  saveHighScores(list);
+function saveBoards(boards) { try { localStorage.setItem(LB_KEY, JSON.stringify(boards)); } catch (e) {} }
+function topFive(list) { return list.slice().sort((a, b) => b.value - a.value).slice(0, 5); }
+/* Record one real result. `flight` (seconds) also files it under the
+ * longest-flight board; `cup` files it under cup champions. Scores at or below
+ * zero are ignored. */
+function addLeaderboardEntry(entry) {
+  const name = (entry.name || "YOU").toString().slice(0, 12);
+  const value = Math.round(Number(entry.value) || 0);
+  if (value <= 0) return;
+  const boards = loadBoards();
+  const now = Date.now();
+  boards.records.push({ name, value, at: now });
+  boards.records = topFive(boards.records);
+  if (Number(entry.flight) > 0) {
+    boards.flights.push({ name, value: Math.round(Number(entry.flight)), at: now });
+    boards.flights = topFive(boards.flights);
+  }
+  if (entry.cup) { boards.cup.push({ name, value, at: now }); boards.cup = topFive(boards.cup); }
+  saveBoards(boards);
   renderHighScores();
 }
-/* D6 — high-score attract reel. Three seeded default record sets cycle with a
- * 6s stepped dwell (no fade); rank 01 is highlighted (Serial Position). Seeded
- * rows are demo fiction and always carry a `· DEMO` tag. Real local scores
- * (`ll_highscores_v2`) replace the seeded rows in the cabinet-records table so
- * play always outranks the demo rows. The same reel is shown between rounds. */
-const DEFAULT_HS_TABLES = [
-  { tag: "CABINET RECORDS · DEMO", rows: [["SDP", 312], ["KHD", 294], ["CPW", 288], ["MFT", 271], ["SKT", 249]] },
-  { tag: "CUP CHAMPIONS · DEMO", rows: [["CPW", 402], ["SDP", 388], ["KHD", 360], ["SKT", 344], ["MFT", 331]] },
-  { tag: "LONGEST FLIGHTS · DEMO", rows: [["KHD", 275], ["CPW", 268], ["SDP", 261], ["MFT", 254], ["SKT", 240]] },
-];
-const HS_REEL_DWELL_MS = 6000;
-let hsReelIndex = 0;
-let hsReelTimer = null;
-
-function hsReelTables() {
-  const local = loadHighScores();
-  return DEFAULT_HS_TABLES.map((table, index) => {
-    const seeded = table.rows.map(([name, score]) => ({ name, score, demo: true }));
-    if (index !== 0 || !local.length) return { tag: table.tag, rows: seeded };
-    const rows = local.slice(0, 5).map((r) => ({ name: r.initials, score: r.score, demo: false }));
-    for (const row of seeded) { if (rows.length >= 5) break; rows.push(row); }
-    return { tag: "CABINET RECORDS", rows };
-  });
+function leaderboards() {
+  const b = loadBoards();
+  return [
+    { tag: "CABINET RECORDS", rows: topFive(b.records).map((r) => ({ name: r.name, score: Math.round(r.value) })) },
+    { tag: "CUP CHAMPIONS", rows: topFive(b.cup).map((r) => ({ name: r.name, score: Math.round(r.value) })) },
+    { tag: "LONGEST FLIGHTS · SEC", rows: topFive(b.flights).map((r) => ({ name: r.name, score: Math.round(r.value) })) },
+  ];
 }
-function renderReelList(listEl, tagEl, table) {
+function qualifiesHighScore(score) {
+  const list = loadBoards().records;
+  return score > 0 && (list.length < 5 || score > Math.min(...list.map((r) => r.value)));
+}
+function commitHighScore(initials, score, mode) {
+  addLeaderboardEntry({ name: (initials || "AAA").toUpperCase().slice(0, 3), value: score, cup: mode === "cup" });
+}
+function renderBoard(listEl, tagEl, board) {
   if (!listEl) return;
-  if (tagEl) tagEl.textContent = table.tag;
-  listEl.innerHTML = table.rows.map((row, i) =>
+  if (tagEl) tagEl.textContent = board.tag;
+  if (!board.rows.length) {
+    listEl.innerHTML = `<li class="hs-empty">NO RECORDS YET</li>`;
+    return;
+  }
+  listEl.innerHTML = board.rows.map((row, i) =>
     `<li class="${i === 0 ? "rank-one" : ""}"><span class="hs-rank">${String(i + 1).padStart(2, "0")}</span>` +
-    `<span class="hs-name">${escapeHtml(row.name)}${row.demo ? ' <em class="hs-demo">· DEMO</em>' : ""}</span>` +
+    `<span class="hs-name">${escapeHtml(row.name)}</span>` +
     `<span class="hs-pts">${row.score}</span></li>`
   ).join("");
 }
+/* The three title-screen boards are always visible. The match screen's
+ * between-round reel keeps cycling them with a 6s stepped dwell. */
+const HS_REEL_DWELL_MS = 6000;
+let hsReelIndex = 0;
+let hsReelTimer = null;
 function renderHighScores() {
-  const tables = hsReelTables();
-  const idx = hsReelIndex % tables.length;
-  const table = tables[idx];
-  renderReelList($("highscore-list"), $("hs-panel-tag"), table);
-  renderReelList($("between-highscore-list"), $("between-reel-tag"), table);
-  const dots = $("reel-dots");
-  if (dots) [...dots.children].forEach((d, i) => d.classList.toggle("on", i === idx));
+  const boards = leaderboards();
+  renderBoard($("highscore-list"), $("hs-panel-tag"), boards[0]);
+  renderBoard($("highscore-list-2"), $("hs-panel-tag-2"), boards[1]);
+  renderBoard($("highscore-list-3"), $("hs-panel-tag-3"), boards[2]);
+  renderBoard($("between-highscore-list"), $("between-reel-tag"), boards[hsReelIndex % boards.length]);
 }
 function startHighScoreReel() {
   if (hsReelTimer) return;
   hsReelTimer = setInterval(() => {
-    hsReelIndex = (hsReelIndex + 1) % DEFAULT_HS_TABLES.length;
-    renderHighScores();
+    hsReelIndex = (hsReelIndex + 1) % 3;
+    renderBoard($("between-highscore-list"), $("between-reel-tag"), leaderboards()[hsReelIndex]);
   }, HS_REEL_DWELL_MS);
-}
-
-/* ---------------------------------------------------------------- credits (D4) */
-const CREDIT_MAX = 99;
-let credits = 0;
-let creditFlashTimer = null;
-function renderCredits() {
-  const digits = $("credit-digits");
-  if (digits) digits.textContent = String(Math.max(0, Math.min(CREDIT_MAX, credits))).padStart(2, "0");
-  const prompt = $("coin-prompt");
-  if (prompt) {
-    const ready = credits > 0;
-    prompt.textContent = ready ? "CREDIT READY" : "INSERT COIN";
-    prompt.classList.toggle("live", !ready);
-  }
-}
-function addCredit() {
-  if (credits >= CREDIT_MAX) return false;
-  credits += 1;
-  const readout = $("credit-readout");
-  if (readout && !prefersReducedMotion()) {
-    readout.classList.add("flash");
-    clearTimeout(creditFlashTimer);
-    creditFlashTimer = setTimeout(() => readout.classList.remove("flash"), 120);
-  }
-  Sound.sfx("coin");
-  renderCredits();
-  return true;
-}
-function consumeCredit() {
-  if (credits <= 0) return false;
-  credits -= 1;
-  renderCredits();
-  return true;
 }
 
 /* ============================================================================
@@ -2293,7 +2298,6 @@ def step_many_json(payload_json):
 `;
 
 async function boot() {
-  renderCredits();
   renderHighScores();
   startHighScoreReel();
   initializePanels();
@@ -2445,10 +2449,16 @@ function wireEvents() {
   window.addEventListener("pointerdown", unlock, { once: true });
   window.addEventListener("keydown", unlock, { once: true });
 
+  const sfxBtn = $("sfx-toggle");
+  if (sfxBtn) sfxBtn.addEventListener("click", () => {
+    const on = Sound.toggleSfx();
+    sfxBtn.setAttribute("aria-pressed", String(on));
+    if (on) Sound.sfx("menu");
+  });
+
   const musicBtn = $("music-toggle");
   if (musicBtn) musicBtn.addEventListener("click", () => {
     const on = Sound.toggleMusic();
-    musicBtn.textContent = on ? "MUSIC ON" : "MUSIC OFF";
     musicBtn.setAttribute("aria-pressed", String(on));
     Sound.sfx("menu");
   });
@@ -2457,23 +2467,26 @@ function wireEvents() {
   if (voiceBtn) voiceBtn.addEventListener("click", () => {
     const on = Sound.toggleVoices();
     if (!on) Commentary.stop();
-    voiceBtn.textContent = on ? "VOICE ON" : "VOICE OFF";
     voiceBtn.setAttribute("aria-pressed", String(on));
     Sound.sfx("menu");
+  });
+
+  const resetBtn = $("cabinet-reset");
+  if (resetBtn) resetBtn.addEventListener("click", () => {
+    Sound.unlock();
+    Sound.sfx("select");
+    attractDemo.running = false;
+    attractDemo.restartAt = 0;
+    attractTaglineAt = 0;
+    showScreen("attract");
   });
 
   const start = $("start-game");
   if (start) start.addEventListener("click", () => {
     Sound.unlock();
-    // PRESS START banks a credit, then consumes one (immediate feedback).
-    addCredit();
-    consumeCredit();
     Commentary.line("coin");
     showScreen("menu");
   });
-
-  const coinSlot = $("coin-slot");
-  if (coinSlot) coinSlot.addEventListener("click", () => { Sound.unlock(); addCredit(); });
 
   // The deck's RESET button is a discrete action (ArrowDown is not a held key
   // in the game loop), so wire it directly; solo is the only screen that resets.

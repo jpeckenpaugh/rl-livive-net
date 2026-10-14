@@ -21,36 +21,22 @@
 
       <div class="cabinet-body">
       <header class="cabinet-marquee">
-        <div class="marquee-left">
-          <div class="marquee-studio">LIVIVE.NET STUDIOS</div>
-          <span class="marquee-word">LUNAR <em>LANDER</em></span>
-          <span class="marquee-edition">TOURNAMENT EDITION</span>
-        </div>
-        <div class="marquee-right">
-          <div class="speaker-wrap">
-            <div class="speaker" role="img" aria-label="Speaker grille"></div>
-            <div class="speaker-label">SPEAKER</div>
-          </div>
-          <div class="marquee-toggles">
-            <button
-              id="music-toggle"
-              class="music-toggle"
-              type="button"
-              aria-pressed="true"
-              aria-label="Toggle music"
-            >
-              MUSIC ON
-            </button>
-            <button
-              id="voice-toggle"
-              class="music-toggle voice-toggle"
-              type="button"
-              aria-pressed="true"
-              aria-label="Toggle announcer voice"
-            >
-              VOICE ON
-            </button>
-          </div>
+        <div class="marquee-tools" role="group" aria-label="Cabinet controls">
+          <button id="cabinet-reset" class="hdr-icon" type="button" aria-label="Reset to startup screen" title="Reset to startup screen">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9" /><path d="M7.6 6.3a7 7 0 1 0 8.8 0" /></svg>
+          </button>
+          <button id="cabinet-about" class="hdr-icon" data-screen="about" type="button" aria-label="About the cabinet" title="About">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.3 9.2a2.7 2.7 0 1 1 3.6 2.5c-.8.3-1.1.9-1.1 1.7v.3" /><path d="M11.9 17.2h.1" /></svg>
+          </button>
+          <button id="sfx-toggle" class="hdr-icon" type="button" aria-pressed="true" aria-label="Toggle sound effects" title="Sound effects">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h3l4-3v12l-4-3H4z" /><path class="wave" d="M14.5 9.5a4 4 0 0 1 0 5" /><path class="wave" d="M17 7a7.5 7.5 0 0 1 0 10" /></svg>
+          </button>
+          <button id="music-toggle" class="hdr-icon" type="button" aria-pressed="true" aria-label="Toggle music" title="Music">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 17V6l9-2v11" /><circle cx="6.5" cy="17.5" r="2.5" /><circle cx="15.5" cy="15.5" r="2.5" /></svg>
+          </button>
+          <button id="voice-toggle" class="hdr-icon" type="button" aria-pressed="true" aria-label="Toggle announcer voice" title="Announcer voice">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M6 11a6 6 0 0 0 12 0" /><path d="M12 17v4" /><path d="M9 21h6" /></svg>
+          </button>
         </div>
       </header>
 
@@ -74,29 +60,33 @@
           hidden
           aria-label="Attract mode"
         >
-          <div class="attract-hero">
-            <p class="attract-eyebrow">FREE PLAY · TOURNAMENT EDITION</p>
-            <h1 class="attract-title">LUNAR<em>LANDER</em></h1>
-            <p class="attract-tagline" id="attract-tagline">INSERT COIN — PRESS START</p>
-            <button id="start-game" class="coin-btn" type="button">
-              <span class="coin-glyph" aria-hidden="true">◉</span> PRESS START
-            </button>
-            <p class="attract-hint">PRESS START · INSERT COIN</p>
-          </div>
-          <div class="attract-panel">
-            <p class="panel-tag" id="hs-panel-tag">CABINET RECORDS · DEMO</p>
-            <ol class="highscore-list" id="highscore-list" aria-label="High scores"></ol>
-            <div class="reel-foot">
-              <p class="reel-note">DEFAULT RECORDS · REPLACED BY YOUR SCORES</p>
-              <div class="reel-dots" id="reel-dots" aria-hidden="true"><i class="on"></i><i></i><i></i></div>
+          <canvas id="attract-canvas" class="attract-bg" width="600" height="400" aria-hidden="true"></canvas>
+          <div class="attract-shade" aria-hidden="true"></div>
+          <span class="attract-demo-loading" id="attract-demo-loading">LOADING PILOTS…</span>
+          <div class="attract-content">
+            <div class="attract-hero">
+              <p class="attract-eyebrow">FREE PLAY · TOURNAMENT EDITION</p>
+              <h1 class="attract-title">LUNAR <em>LANDER</em></h1>
+              <p class="attract-tagline" id="attract-tagline">PRESS START TO FLY</p>
+              <button id="start-game" class="coin-btn" type="button">
+                <span class="coin-glyph" aria-hidden="true">◉</span> PRESS START
+              </button>
+              <span class="attract-demo-pilot" id="attract-demo-pilot">ATTRACT MODE</span>
             </div>
-          </div>
-          <div class="attract-demo" aria-hidden="true">
-            <canvas id="attract-canvas" width="600" height="400"></canvas>
-            <span class="attract-demo-loading" id="attract-demo-loading">LOADING PILOTS…</span>
-            <span class="attract-demo-badge">DEMO</span>
-            <span class="attract-demo-pilot" id="attract-demo-pilot">ATTRACT MODE</span>
-            <span class="attract-demo-press">PRESS START</span>
+            <div class="attract-boards">
+              <div class="attract-panel">
+                <p class="panel-tag" id="hs-panel-tag">CABINET RECORDS</p>
+                <ol class="highscore-list" id="highscore-list" aria-label="Cabinet records"></ol>
+              </div>
+              <div class="attract-panel">
+                <p class="panel-tag" id="hs-panel-tag-2">CUP CHAMPIONS</p>
+                <ol class="highscore-list" id="highscore-list-2" aria-label="Cup champions"></ol>
+              </div>
+              <div class="attract-panel">
+                <p class="panel-tag" id="hs-panel-tag-3">LONGEST FLIGHTS</p>
+                <ol class="highscore-list" id="highscore-list-3" aria-label="Longest flights"></ol>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -248,7 +238,7 @@
           <canvas class="confetti match-confetti" id="match-confetti" aria-hidden="true"></canvas>
           <div id="match-error" class="multi-error" hidden></div>
           <aside class="between-reel" id="between-reel" hidden aria-label="High scores between rounds">
-            <p class="panel-tag" id="between-reel-tag">CABINET RECORDS · DEMO</p>
+            <p class="panel-tag" id="between-reel-tag">CABINET RECORDS</p>
             <ol class="highscore-list" id="between-highscore-list"></ol>
           </aside>
         </section>
@@ -415,18 +405,6 @@
           </div>
         </div>
 
-        <footer class="cabinet-coin-door">
-          <div class="credit" id="credit-readout">
-            <span class="credit-lab">CREDIT</span>
-            <span class="credit-digits" id="credit-digits">00</span>
-          </div>
-          <span class="coin-prompt live" id="coin-prompt">INSERT COIN</span>
-          <button class="coin-slot" id="coin-slot" type="button" aria-label="Insert 25 cent coin">
-            <span class="coin-slot-glyph" aria-hidden="true"></span>
-            <span>INSERT 25¢</span>
-          </button>
-          <button class="coin-door-link" data-screen="about" type="button">How the cabinet works ↗</button>
-        </footer>
       </div><!-- /cabinet-body -->
 
       <!-- ========================= RIGHT SIDE ART ====================== -->
