@@ -25,21 +25,24 @@
             <button id="human-controller" class="controller" type="button" title="You control the lander: ←/→ rotate, ↑ fire the main engine." aria-label="Human Pilot: you control the lander directly." aria-pressed="false" disabled><span class="controller-name">Human Pilot</span><span class="controller-state">SELECT</span></button>
             <button id="override-controller" class="controller" type="button" title="The AI flies by default. Hold ←/→ to rotate or ↑ to fire the engine; release to return control to the AI." aria-label="Autopilot with Manual Override: AI flies by default, and held rotation or engine input overrides it." aria-pressed="false" disabled><span class="controller-name">Autopilot with Manual Override</span><span class="controller-state">SELECT</span></button>
             <button id="policy-controller" class="controller" type="button" title="The ONNX-trained policy chooses every flight action." aria-label="AI Pilot: the trained policy controls every action." aria-pressed="false" disabled><span class="controller-name">AI Pilot</span><span id="policy-label" class="controller-state">SELECT</span></button>
+            <button id="multi-controller" class="controller" type="button" title="Run four independent AI episodes at once. Each flight has its own score and outcome." aria-label="Four AI simulations: run four independent AI episodes concurrently." aria-pressed="false" disabled><span class="controller-name">4 AI Simulations</span><span class="controller-state">SELECT</span></button>
           </div>
-          <p id="controller-help" class="controller-help" hidden>AI flies by default. Hold ←/→ to rotate or ↑ to fire the engine; release to return control to AI.</p>
+          <p id="controller-help" class="controller-help" hidden></p>
         </div>
-        <div class="screen-wrap">
+        <div id="screen-wrap" class="screen-wrap">
           <canvas id="screen" width="600" height="400" aria-label="Lunar lander simulation"></canvas>
           <div id="overlay" class="overlay"><div class="loader"></div><p id="message">Loading Pyodide…</p></div>
         </div>
-        <div class="telemetry">
+        <div id="multi-error" class="multi-error" hidden></div>
+        <div id="multi-board" class="multi-board" hidden aria-label="Four independent AI simulations"></div>
+        <div id="telemetry" class="telemetry">
           <div><span class="label">ALTITUDE</span><strong id="altitude">—</strong><small>m</small></div>
           <div><span class="label">HORIZONTAL SPEED</span><strong id="hspeed">—</strong><small>m/s</small></div>
           <div><span class="label">VERTICAL SPEED</span><strong id="vspeed">—</strong><small>m/s</small></div>
           <div><span class="label">REWARD</span><strong id="reward">—</strong><small>pts</small></div>
         </div>
         <div class="controls-row">
-          <div class="hint"><kbd>←</kbd><kbd>→</kbd> rotate <span class="sep">/</span> <kbd>↑</kbd> main engine <span class="sep">/</span> <kbd>↓</kbd> reset</div>
+          <div id="controls-hint" class="hint"><kbd>←</kbd><kbd>→</kbd> rotate <span class="sep">/</span> <kbd>↑</kbd> main engine <span class="sep">/</span> <kbd>↓</kbd> reset</div>
           <label class="time-scale" for="time-scale">
             <span>TIME SCALE</span>
             <select id="time-scale" title="Simulation speed relative to default. 0.25× runs four times slower; 4× runs four times faster. AI inference and browser performance can limit the achieved speed.">

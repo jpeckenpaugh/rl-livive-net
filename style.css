@@ -38,3 +38,17 @@ footer{align-items:center;gap:18px}footer b{color:var(--lime);font-weight:400}fo
 .course-lineage a{color:#dce7d2;text-decoration-color:#6c805c;text-underline-offset:3px}
 .course-lineage a:hover{color:var(--lime)}
 @media(max-width:600px){.controller-row{grid-template-columns:1fr}.controller-label,.controller-options,.controller-help{grid-column:1}.controller-label{grid-row:1}.controller-options{grid-row:2;grid-template-columns:1fr;width:100%;flex:none}.controller-help{grid-row:3}.controller{flex:initial}}
+.controller-options{grid-template-columns:minmax(0,.8fr) minmax(0,1.35fr) minmax(0,.65fr) minmax(0,1.2fr)}
+#multi-controller{justify-content:center}
+#multi-controller .controller-name{text-align:center}
+.multi-board{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:14px}
+.multi-board[hidden],.multi-error[hidden],.telemetry[hidden]{display:none}
+.multi-sim-card{min-width:0;overflow:hidden;border:1px solid #2a3742;border-radius:3px;background:#101821}
+.multi-sim-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;color:#9ba8b5;font:8px 'DM Mono',monospace;letter-spacing:.05em}
+.multi-sim-heading strong{font-weight:400;color:#cbd5dd}
+.multi-sim-heading .complete{color:var(--lime)}
+.multi-sim-card canvas{width:100%;height:auto;border:0;border-top:1px solid #2a3742;border-radius:0}
+.multi-sim-reward{padding:7px 10px;border-top:1px solid #2a3742;color:#aebac3;font:8px 'DM Mono',monospace;letter-spacing:.05em}
+.multi-error{margin:14px;padding:12px;border:1px solid #8d594b;border-radius:3px;color:#ffad93;font:10px 'DM Mono',monospace}
+@media(max-width:600px){.multi-board{grid-template-columns:1fr;padding:10px}}
+@media(max-width:600px){.controller-options{grid-template-columns:1fr}}

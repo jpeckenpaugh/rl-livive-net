@@ -69,8 +69,10 @@ ONNX Runtime Web 1.19.2's WASM CPU backend. The browser receives the same
 four action logits. PyTorch, Stable-Baselines3, and the ONNX exporter are only
 used locally when producing the model file.
 
-The browser offers three flight modes: Human Pilot, AI Pilot, and Autopilot
-with Override. In override mode the AI controls the full action space by
+The browser offers Human Pilot, AI Pilot, and Autopilot with Override. It also
+offers a 4 AI Simulations mode: four independent environments run policy actions
+concurrently, using a batched ONNX inference call and keeping separate rewards
+and episode outcomes. In override mode the AI controls the full action space by
 default; any held human arrow-key input takes control for that step.
 
 To reproduce the export on macOS, create a separate environment and run the
