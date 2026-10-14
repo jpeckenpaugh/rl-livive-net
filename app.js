@@ -943,6 +943,23 @@ function schedulePixelFit() {
   requestAnimationFrame(() => { pixelFitQueued = false; fitAllPixelCanvases(); });
 }
 
+/* D5 — scale/letterbox the whole fixed cabinet box. The cabinet never reflows;
+ * `--cab-scale = min(vw/(cab-w + margin), vh/(cab-h + margin))`, clamped to 1
+ * so desktop shows the cabinet at its native size. Re-run on resize and
+ * orientationchange. */
+function fitCabinet() {
+  const cs = getComputedStyle(document.documentElement);
+  const cabW = parseFloat(cs.getPropertyValue("--cab-w")) || 1060;
+  const cabH = parseFloat(cs.getPropertyValue("--cab-h")) || 740;
+  const margin = 24;
+  const scale = Math.min(
+    window.innerWidth / (cabW + margin),
+    window.innerHeight / (cabH + margin),
+    1
+  );
+  document.documentElement.style.setProperty("--cab-scale", String(scale));
+}
+
 function drawScene(canvas, ctx, scene, action, pcolor) {
   const { w, h } = beginPixelFrame(canvas, ctx);
   ctx.clearRect(0, 0, w, h);
@@ -1359,8 +1376,6 @@ async function prepareMatch(matchConfig) {
   const toLoad = match.pilots.filter((p) => !p.human).map((p) => p.modelId);
   await Promise.all([...new Set(toLoad)].map((id) => ensureModelSession(id)));
   setupTouchForMatch();
-  const touch = $("match-touch");
-  if (touch) touch.hidden = match.humanSlot < 0;
 }
 
 function hazardIntroText() {
@@ -1372,6 +1387,7 @@ function hazardIntroText() {
 function beginRound() {
   match.round += 1;
   match.roundSteps = 0;
+  const betweenReel = $("between-reel"); if (betweenReel) betweenReel.hidden = true;
   Commentary.roundStart(match.round);
   match.gravity = gravityFor(match.hazards);
   const seed = (match.seedBase + match.round * 2654435761) >>> 0;
@@ -1606,6 +1622,9 @@ function showRoundResult(info) {
   if (cont) { cont.textContent = matchOver ? "RESULTS ▶" : "NEXT ROUND ▶"; cont.hidden = false; }
   if (currentScreenName !== "match") showScreen("match");
   showMatchBanner(true, matchOver);
+  // D6: surface the high-score reel between rounds.
+  const betweenReel = $("between-reel");
+  if (betweenReel) { betweenReel.hidden = false; renderHighScores(); }
   // Announcer reacts to the round. The director composes a Player N line from
   // the round context (subject + event + modifier) and falls back to the classic
   // flawless/perfect/K.O. clips when the new dynamic clips are not baked yet.
@@ -1655,6 +1674,7 @@ function continueAfterRound() {
   stopConfetti();
   const cont = $("match-continue"); if (cont) cont.hidden = true;
   showMatchBanner(false);
+  const betweenReel = $("between-reel"); if (betweenReel) betweenReel.hidden = true;
   const matchOver = match.teams ? (match.roundWins[0] >= 2 || match.roundWins[1] >= 2) : match.round >= match.totalRounds;
   if (!matchOver) {
     if (match.mode === "cup") openMods("round");
@@ -1788,14 +1808,88 @@ function commitHighScore(initials, score, mode) {
   saveHighScores(list);
   renderHighScores();
 }
+/* D6 — high-score attract reel. Three seeded default record sets cycle with a
+ * 6s stepped dwell (no fade); rank 01 is highlighted (Serial Position). Seeded
+ * rows are demo fiction and always carry a `· DEMO` tag. Real local scores
+ * (`ll_highscores_v2`) replace the seeded rows in the cabinet-records table so
+ * play always outranks the demo rows. The same reel is shown between rounds. */
+const DEFAULT_HS_TABLES = [
+  { tag: "CABINET RECORDS · DEMO", rows: [["SDP", 312], ["KHD", 294], ["CPW", 288], ["MFT", 271], ["SKT", 249]] },
+  { tag: "CUP CHAMPIONS · DEMO", rows: [["CPW", 402], ["SDP", 388], ["KHD", 360], ["SKT", 344], ["MFT", 331]] },
+  { tag: "LONGEST FLIGHTS · DEMO", rows: [["KHD", 275], ["CPW", 268], ["SDP", 261], ["MFT", 254], ["SKT", 240]] },
+];
+const HS_REEL_DWELL_MS = 6000;
+let hsReelIndex = 0;
+let hsReelTimer = null;
+
+function hsReelTables() {
+  const local = loadHighScores();
+  return DEFAULT_HS_TABLES.map((table, index) => {
+    const seeded = table.rows.map(([name, score]) => ({ name, score, demo: true }));
+    if (index !== 0 || !local.length) return { tag: table.tag, rows: seeded };
+    const rows = local.slice(0, 5).map((r) => ({ name: r.initials, score: r.score, demo: false }));
+    for (const row of seeded) { if (rows.length >= 5) break; rows.push(row); }
+    return { tag: "CABINET RECORDS", rows };
+  });
+}
+function renderReelList(listEl, tagEl, table) {
+  if (!listEl) return;
+  if (tagEl) tagEl.textContent = table.tag;
+  listEl.innerHTML = table.rows.map((row, i) =>
+    `<li class="${i === 0 ? "rank-one" : ""}"><span class="hs-rank">${String(i + 1).padStart(2, "0")}</span>` +
+    `<span class="hs-name">${escapeHtml(row.name)}${row.demo ? ' <em class="hs-demo">· DEMO</em>' : ""}</span>` +
+    `<span class="hs-pts">${row.score}</span></li>`
+  ).join("");
+}
 function renderHighScores() {
-  const el = $("highscore-list"); if (!el) return;
-  const list = loadHighScores().slice(0, 3);
-  if (!list.length) {
-    el.innerHTML = `<li><span class="hs-rank">01</span><span class="hs-name">SDP</span><span class="hs-pts">312</span></li><li><span class="hs-rank">02</span><span class="hs-name">KHD</span><span class="hs-pts">294</span></li><li><span class="hs-rank">03</span><span class="hs-name">CPW</span><span class="hs-pts">288</span></li>`;
-    return;
+  const tables = hsReelTables();
+  const idx = hsReelIndex % tables.length;
+  const table = tables[idx];
+  renderReelList($("highscore-list"), $("hs-panel-tag"), table);
+  renderReelList($("between-highscore-list"), $("between-reel-tag"), table);
+  const dots = $("reel-dots");
+  if (dots) [...dots.children].forEach((d, i) => d.classList.toggle("on", i === idx));
+}
+function startHighScoreReel() {
+  if (hsReelTimer) return;
+  hsReelTimer = setInterval(() => {
+    hsReelIndex = (hsReelIndex + 1) % DEFAULT_HS_TABLES.length;
+    renderHighScores();
+  }, HS_REEL_DWELL_MS);
+}
+
+/* ---------------------------------------------------------------- credits (D4) */
+const CREDIT_MAX = 99;
+let credits = 0;
+let creditFlashTimer = null;
+function renderCredits() {
+  const digits = $("credit-digits");
+  if (digits) digits.textContent = String(Math.max(0, Math.min(CREDIT_MAX, credits))).padStart(2, "0");
+  const prompt = $("coin-prompt");
+  if (prompt) {
+    const ready = credits > 0;
+    prompt.textContent = ready ? "CREDIT READY" : "INSERT COIN";
+    prompt.classList.toggle("live", !ready);
   }
-  el.innerHTML = list.map((r, i) => `<li><span class="hs-rank">${String(i + 1).padStart(2, "0")}</span><span class="hs-name">${escapeHtml(r.initials)}</span><span class="hs-pts">${r.score}</span></li>`).join("");
+}
+function addCredit() {
+  if (credits >= CREDIT_MAX) return false;
+  credits += 1;
+  const readout = $("credit-readout");
+  if (readout && !prefersReducedMotion()) {
+    readout.classList.add("flash");
+    clearTimeout(creditFlashTimer);
+    creditFlashTimer = setTimeout(() => readout.classList.remove("flash"), 120);
+  }
+  Sound.sfx("coin");
+  renderCredits();
+  return true;
+}
+function consumeCredit() {
+  if (credits <= 0) return false;
+  credits -= 1;
+  renderCredits();
+  return true;
 }
 
 /* ============================================================================
@@ -2199,12 +2293,13 @@ def step_many_json(payload_json):
 `;
 
 async function boot() {
+  renderCredits();
   renderHighScores();
+  startHighScoreReel();
   initializePanels();
   const startBtn = $("start-game");
   if (startBtn) startBtn.disabled = true;
-  bindTouch($("solo-touch"), pressed);
-  bindTouch($("match-touch"), pressed);
+  bindTouch($("cabinet-deck"), pressed);
   showScreen("boot");
   setStatus("ROLLING OUT THE PILOTS");
   await loadCatalog();
@@ -2368,7 +2463,26 @@ function wireEvents() {
   });
 
   const start = $("start-game");
-  if (start) start.addEventListener("click", () => { Sound.unlock(); Sound.sfx("coin"); Commentary.line("coin"); showScreen("menu"); });
+  if (start) start.addEventListener("click", () => {
+    Sound.unlock();
+    // PRESS START banks a credit, then consumes one (immediate feedback).
+    addCredit();
+    consumeCredit();
+    Commentary.line("coin");
+    showScreen("menu");
+  });
+
+  const coinSlot = $("coin-slot");
+  if (coinSlot) coinSlot.addEventListener("click", () => { Sound.unlock(); addCredit(); });
+
+  // The deck's RESET button is a discrete action (ArrowDown is not a held key
+  // in the game loop), so wire it directly; solo is the only screen that resets.
+  const deckReset = $("cabinet-deck") && $("cabinet-deck").querySelector(".arc-btn.reset");
+  if (deckReset) deckReset.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    Sound.unlock();
+    if (currentScreenName === "solo") requestSoloReset();
+  });
 
   document.querySelectorAll("[data-screen]").forEach((btn) => {
     btn.addEventListener("click", () => { Sound.sfx("menu"); showScreen(btn.dataset.screen); });
@@ -2437,9 +2551,12 @@ function wireEvents() {
   });
   document.addEventListener("visibilitychange", () => { if (document.hidden) pressed.clear(); });
 
-  // Keep playfields crisp when the frame or the display density changes.
+  // Scale/letterbox the fixed cabinet (D5) and keep playfields crisp when the
+  // frame or the display density changes.
+  window.addEventListener("resize", fitCabinet);
+  window.addEventListener("orientationchange", () => { fitCabinet(); schedulePixelFit(); });
   window.addEventListener("resize", schedulePixelFit);
-  window.addEventListener("orientationchange", schedulePixelFit);
+  fitCabinet();
   if (window.matchMedia) {
     const dprQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
     if (dprQuery && dprQuery.addEventListener) dprQuery.addEventListener("change", schedulePixelFit);

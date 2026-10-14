@@ -11,31 +11,47 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
+    <div class="stage" id="stage">
     <div class="cabinet" id="cabinet">
+      <!-- ========================= LEFT SIDE ART ======================= -->
+      <aside class="side left" aria-hidden="true">
+        <span class="bolt tl"></span><span class="bolt tr"></span><span class="bolt bl"></span><span class="bolt br"></span>
+        <span class="side-mark">LUNAR LANDER</span>
+      </aside>
+
+      <div class="cabinet-body">
       <header class="cabinet-marquee">
-        <div class="marquee-studio">LIVIVE.NET STUDIOS</div>
-        <div class="marquee-game">
+        <div class="marquee-left">
+          <div class="marquee-studio">LIVIVE.NET STUDIOS</div>
           <span class="marquee-word">LUNAR <em>LANDER</em></span>
           <span class="marquee-edition">TOURNAMENT EDITION</span>
         </div>
-        <button
-          id="music-toggle"
-          class="music-toggle"
-          type="button"
-          aria-pressed="true"
-          aria-label="Toggle music"
-        >
-          MUSIC ON
-        </button>
-        <button
-          id="voice-toggle"
-          class="music-toggle voice-toggle"
-          type="button"
-          aria-pressed="true"
-          aria-label="Toggle announcer voice"
-        >
-          VOICE ON
-        </button>
+        <div class="marquee-right">
+          <div class="speaker-wrap">
+            <div class="speaker" role="img" aria-label="Speaker grille"></div>
+            <div class="speaker-label">SPEAKER</div>
+          </div>
+          <div class="marquee-toggles">
+            <button
+              id="music-toggle"
+              class="music-toggle"
+              type="button"
+              aria-pressed="true"
+              aria-label="Toggle music"
+            >
+              MUSIC ON
+            </button>
+            <button
+              id="voice-toggle"
+              class="music-toggle voice-toggle"
+              type="button"
+              aria-pressed="true"
+              aria-label="Toggle announcer voice"
+            >
+              VOICE ON
+            </button>
+          </div>
+        </div>
       </header>
 
       <div class="cabinet-stage">
@@ -68,8 +84,12 @@
             <p class="attract-hint">PRESS START · INSERT COIN</p>
           </div>
           <div class="attract-panel">
-            <p class="panel-tag">HIGH SCORES</p>
+            <p class="panel-tag" id="hs-panel-tag">CABINET RECORDS · DEMO</p>
             <ol class="highscore-list" id="highscore-list" aria-label="High scores"></ol>
+            <div class="reel-foot">
+              <p class="reel-note">DEFAULT RECORDS · REPLACED BY YOUR SCORES</p>
+              <div class="reel-dots" id="reel-dots" aria-hidden="true"><i class="on"></i><i></i><i></i></div>
+            </div>
           </div>
           <div class="attract-demo" aria-hidden="true">
             <canvas id="attract-canvas" width="600" height="400"></canvas>
@@ -135,11 +155,6 @@
               </label>
               <p id="pilot-source" class="pilot-source" hidden></p>
               <button id="solo-reset" class="cab-btn cab-btn-ghost" type="button" disabled>RESET ↻</button>
-            </div>
-            <div class="touch-pad" id="solo-touch" aria-label="Touch flight controls">
-              <button class="touch-btn" data-touch="ArrowLeft" type="button" aria-label="Rotate left">◀</button>
-              <button class="touch-btn touch-thrust" data-touch="ArrowUp" type="button" aria-label="Main engine">▲ THRUST</button>
-              <button class="touch-btn" data-touch="ArrowRight" type="button" aria-label="Rotate right">▶</button>
             </div>
           </div>
         </section>
@@ -232,11 +247,10 @@
           <div id="multi-board" class="multi-board" aria-label="Pilots racing"></div>
           <canvas class="confetti match-confetti" id="match-confetti" aria-hidden="true"></canvas>
           <div id="match-error" class="multi-error" hidden></div>
-          <div class="touch-pad" id="match-touch" hidden aria-label="Touch flight controls">
-            <button class="touch-btn" data-touch="ArrowLeft" type="button" aria-label="Rotate left">◀</button>
-            <button class="touch-btn touch-thrust" data-touch="ArrowUp" type="button" aria-label="Main engine">▲ THRUST</button>
-            <button class="touch-btn" data-touch="ArrowRight" type="button" aria-label="Rotate right">▶</button>
-          </div>
+          <aside class="between-reel" id="between-reel" hidden aria-label="High scores between rounds">
+            <p class="panel-tag" id="between-reel-tag">CABINET RECORDS · DEMO</p>
+            <ol class="highscore-list" id="between-highscore-list"></ol>
+          </aside>
         </section>
 
         <!-- ========================== CELEBRATE WIN ======================= -->
@@ -377,13 +391,52 @@
           </details>
         </section>
         </main>
-      </div>
+        </div>
 
-      <footer class="cabinet-coin-door">
-        <span>INSERT COIN · CREDIT 01</span>
-        <button class="coin-door-link" data-screen="about" type="button">How the cabinet works ↗</button>
-      </footer>
-    </div>
+        <!-- ========================= CONTROL DECK ======================== -->
+        <div class="deck" id="cabinet-deck" aria-label="Touch flight controls">
+          <div class="deck-joy">
+            <div class="joy">
+              <div class="gate"></div><div class="recess"></div><div class="stick"></div><div class="ball"></div>
+              <button class="joy-zone left" data-touch="ArrowLeft" type="button" aria-label="Rotate left">◀</button>
+              <button class="joy-zone right" data-touch="ArrowRight" type="button" aria-label="Rotate right">▶</button>
+            </div>
+            <div class="deck-cap">JOYSTICK · ROTATE</div>
+          </div>
+          <div class="deck-buttons">
+            <div class="deck-btn-wrap">
+              <button class="arc-btn thrust" data-touch="ArrowUp" type="button" aria-label="Main engine">MAIN<br>ENGINE</button>
+              <div class="deck-cap">THRUST</div>
+            </div>
+            <div class="deck-btn-wrap">
+              <button class="arc-btn reset" data-touch="ArrowDown" type="button" aria-label="Reset flight">RESET</button>
+              <div class="deck-cap">RESET</div>
+            </div>
+          </div>
+        </div>
+
+        <footer class="cabinet-coin-door">
+          <div class="credit" id="credit-readout">
+            <span class="credit-lab">CREDIT</span>
+            <span class="credit-digits" id="credit-digits">00</span>
+          </div>
+          <span class="coin-prompt live" id="coin-prompt">INSERT COIN</span>
+          <button class="coin-slot" id="coin-slot" type="button" aria-label="Insert 25 cent coin">
+            <span class="coin-slot-glyph" aria-hidden="true"></span>
+            <span>INSERT 25¢</span>
+          </button>
+          <button class="coin-door-link" data-screen="about" type="button">How the cabinet works ↗</button>
+        </footer>
+      </div><!-- /cabinet-body -->
+
+      <!-- ========================= RIGHT SIDE ART ====================== -->
+      <aside class="side right" aria-hidden="true">
+        <span class="bolt tl"></span><span class="bolt tr"></span><span class="bolt bl"></span><span class="bolt br"></span>
+        <div class="lander"><div class="hull"></div><div class="legs"><i></i><i></i></div></div>
+        <span class="side-mark">TOURNAMENT EDITION</span>
+      </aside>
+    </div><!-- /cabinet -->
+    </div><!-- /stage -->
     <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
     <script src="app.js" type="module"></script>
   </body>
