@@ -238,6 +238,11 @@ a { color: var(--gold); }
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  /* The cabinet screen is a column flex container. A flex item's auto
+     cross-axis margins (from `.center-screen`) make its width resolve to
+     fit-content instead of stretch. An explicit full width lets the
+     `max-width: 560px` + `margin: 0 auto` centering work as before. */
+  width: 100%;
 }
 .screen[hidden] { display: none !important; }
 
