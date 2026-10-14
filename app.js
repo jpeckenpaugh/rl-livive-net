@@ -909,16 +909,16 @@ function fitPixelCanvas(canvas, nativeW = NATIVE_W, nativeH = NATIVE_H) {
   const padX = parseFloat(styles.paddingLeft || "0") + parseFloat(styles.paddingRight || "0");
   const availW = (host.clientWidth || 0) - padX;
   if (!(availW > 0)) return;
-  const dpr = window.devicePixelRatio || 1;
-  let displayW, deviceScale;
-  if (availW >= nativeW) {
-    const cssScale = Math.floor(availW / nativeW); // whole-number upscale
-    displayW = nativeW * cssScale;
-    deviceScale = cssScale * dpr;
-  } else {
-    displayW = availW;                 // CSS shrinks the element to the frame
-    deviceScale = devicePixelRatioInt(); // integer transform, no soft fringe
-  }
+  let fit = availW / nativeW;
+  if (!isFinite(fit) || fit <= 0) fit = 1;
+  // Whole-number upscale for wide frames; narrower frames shrink in CSS. Either
+  // way the internal transform is a whole number of device pixels per logical
+  // pixel, so the scene is never resampled by a fractional setTransform (and
+  // fractional-DPR displays round to the nearest whole scale).
+  const narrow = fit < 1;
+  const cssScale = narrow ? fit : Math.floor(fit);
+  const displayW = nativeW * cssScale;
+  const deviceScale = (narrow ? 1 : cssScale) * devicePixelRatioInt();
   canvas.dataset.logicalW = String(nativeW);
   canvas.dataset.logicalH = String(nativeH);
   canvas.dataset.pixelScale = String(deviceScale);
