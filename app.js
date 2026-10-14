@@ -1178,15 +1178,6 @@ function renderResultStats(terminal, flightTime) {
     return el;
   }));
 }
-function updateAudioToggles() {
-  document.querySelectorAll(".opt-toggle").forEach((btn) => {
-    const on = btn.dataset.audio === "sfx" ? Sound.isSfxOn()
-      : btn.dataset.audio === "music" ? Sound.isOn()
-      : Sound.isVoicesOn();
-    btn.classList.toggle("on", on);
-    btn.setAttribute("aria-pressed", String(on));
-  });
-}
 function showSoloResult(terminal, flightTime) {
   const panel = $("solo-result"); if (!panel) return;
   const landed = terminal.terminated && terminal.reward >= 0;
@@ -1195,10 +1186,8 @@ function showSoloResult(terminal, flightTime) {
   const scoreEl = $("result-score");
   if (scoreEl) scoreEl.textContent = `${Math.round(solo.totalReward)} pts · ${flightTime.toFixed(1)}s`;
   renderResultStats(terminal, flightTime);
-  const options = $("result-options-panel"); if (options) options.hidden = true;
   const pilotBtn = $("result-change-pilot");
   if (pilotBtn) pilotBtn.hidden = solo.controllerMode === "human";
-  updateAudioToggles();
   soloStatus("FLIGHT OVER");
   panel.hidden = false;
   resultFocusIndex = 0;
@@ -1206,7 +1195,6 @@ function showSoloResult(terminal, flightTime) {
 }
 function hideSoloResult() {
   const panel = $("solo-result"); if (panel) panel.hidden = true;
-  const options = $("result-options-panel"); if (options) options.hidden = true;
 }
 function resultItems() {
   const panel = $("solo-result");
@@ -1958,6 +1946,8 @@ function loadBoards() {
 }
 function saveBoards(boards) { try { localStorage.setItem(LB_KEY, JSON.stringify(boards)); } catch (e) {} }
 function topFive(list) { return list.slice().sort((a, b) => b.value - a.value).slice(0, 5); }
+/* The title boards show only the top three rows; the storage keeps five. */
+function topThree(list) { return topFive(list).slice(0, 3); }
 /* Record one real result. `flight` (seconds) also files it under the
  * longest-flight board; `cup` files it under cup champions. Scores at or below
  * zero are ignored. */
@@ -1980,9 +1970,9 @@ function addLeaderboardEntry(entry) {
 function leaderboards() {
   const b = loadBoards();
   return [
-    { tag: "CABINET RECORDS", rows: topFive(b.records).map((r) => ({ name: r.name, score: Math.round(r.value) })) },
-    { tag: "CUP CHAMPIONS", rows: topFive(b.cup).map((r) => ({ name: r.name, score: Math.round(r.value) })) },
-    { tag: "LONGEST FLIGHTS · SEC", rows: topFive(b.flights).map((r) => ({ name: r.name, score: Math.round(r.value) })) },
+    { tag: "CABINET RECORDS", rows: topThree(b.records).map((r) => ({ name: r.name, score: Math.round(r.value) })) },
+    { tag: "CUP CHAMPIONS", rows: topThree(b.cup).map((r) => ({ name: r.name, score: Math.round(r.value) })) },
+    { tag: "LONGEST FLIGHTS · SEC", rows: topThree(b.flights).map((r) => ({ name: r.name, score: Math.round(r.value) })) },
   ];
 }
 function qualifiesHighScore(score) {
@@ -2681,28 +2671,12 @@ function wireEvents() {
   });
   const resultNext = $("result-next");
   if (resultNext) resultNext.addEventListener("click", () => { Sound.sfx("coin"); hideSoloResult(); requestSoloReset(); });
-  const resultOptions = $("result-options");
-  if (resultOptions) resultOptions.addEventListener("click", () => {
-    Sound.sfx("menu");
-    const panel = $("result-options-panel");
-    if (panel) panel.hidden = !panel.hidden;
-    updateAudioToggles();
-    resultFocusIndex = 0;
-  });
   const resultTitle = $("result-title");
   if (resultTitle) resultTitle.addEventListener("click", () => { Sound.sfx("menu"); hideSoloResult(); showScreen("attract"); });
   const resultChangeMode = $("result-change-mode");
   if (resultChangeMode) resultChangeMode.addEventListener("click", () => { Sound.sfx("menu"); hideSoloResult(); showScreen("solomode"); });
   const resultChangePilot = $("result-change-pilot");
   if (resultChangePilot) resultChangePilot.addEventListener("click", () => { Sound.sfx("menu"); hideSoloResult(); renderPilotCards(); showScreen("pilotselect"); });
-  document.querySelectorAll(".opt-toggle").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      if (btn.dataset.audio === "sfx") Sound.toggleSfx();
-      else if (btn.dataset.audio === "music") Sound.toggleMusic();
-      else { const on = Sound.toggleVoices(); if (!on) Commentary.stop(); }
-      updateAudioToggles();
-    });
-  });
   window.addEventListener("keydown", (e) => {
     if (currentScreenName === "solo" && soloResultVisible()) {
       if (e.code === "ArrowUp") { e.preventDefault(); moveResultFocus(-1); return; }
