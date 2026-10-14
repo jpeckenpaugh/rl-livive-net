@@ -768,7 +768,8 @@ function showScreen(name) {
   if (!["match", "attract", "win"].includes(name)) stopConfetti();
   showMatchBanner(false);
   resetMenuFocus();
-  window.scrollTo({ top: 0, behavior: "auto" });
+  // The cabinet is a single fixed frame — the document cannot scroll, so there
+  // is nothing to reset here. Long screens scroll inside `.cabinet-screen`.
 }
 function setStatus(message) {
   const el = $("cabinet-status");

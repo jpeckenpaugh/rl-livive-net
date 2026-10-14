@@ -74,14 +74,20 @@
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
+/* Single fixed frame: the document never scrolls — the cabinet owns the viewport. */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
 body {
   background: var(--void);
   color: var(--text);
   font-family: var(--body);
   font-size: var(--type-title-sm);
   line-height: 1.25;
-  min-height: 100vh;
   -webkit-font-smoothing: none;
 }
 img, canvas { max-width: 100%; }
@@ -89,10 +95,21 @@ a { color: var(--gold); }
 
 /* ------------------------------------------------------------- cabinet frame */
 .cabinet {
+  /* Full-height flex column: fixed marquee → flexible letterboxed stage → fixed
+     coin door. Nothing here scrolls the document; each screen scrolls inside
+     the fixed frame instead. */
+  height: 100vh;
+  height: 100dvh;
   max-width: 1000px;
   margin: 0 auto;
   padding: 14px 22px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
 }
+.cabinet-marquee { flex: 0 0 auto; }
+.cabinet-coin-door { flex: 0 0 auto; }
 .cabinet-marquee {
   position: relative;
   display: grid;
@@ -140,15 +157,36 @@ a { color: var(--gold); }
 /* Announcer voice toggle sits just left of the music toggle. */
 .voice-toggle { right: 96px; }
 
+/* Flexible middle row. The stage sizes the screen to a fixed 3:2 frame and
+   letterboxes it inside the available height, so every screen shares one
+   cabinet height and the frame never resizes to its contents. */
+.cabinet-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  container-type: size;
+}
 .cabinet-screen {
-  margin-top: 10px;
+  width: 100%;
+  height: 100%;
   border: 4px solid #2a3450;
   background: var(--void);
   padding: 28px;
-  min-height: 62vh;
   position: relative;
   overflow: hidden;
   box-shadow: inset 0 0 0 2px #000;
+  display: flex;
+  flex-direction: column;
+}
+/* Hold the monitor to a fixed 3:2 and center it with black bars when the track
+   is taller or wider than the ratio allows. */
+@supports (width: 1cqw) {
+  .cabinet-screen {
+    width: min(100cqw, calc(100cqh * 3 / 2));
+    height: auto;
+    aspect-ratio: 3 / 2;
+  }
 }
 /* CRT scanlines (kept) */
 .cabinet-screen::after {
@@ -166,7 +204,7 @@ a { color: var(--gold); }
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  margin-top: 10px;
+  margin-top: 0;
   padding: 12px 16px;
   border: 2px solid #2a3450;
   background: #161b28;
@@ -193,6 +231,13 @@ a { color: var(--gold); }
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+/* Every screen fills the one fixed frame; long content (About) scrolls inside. */
+.screen {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 .screen[hidden] { display: none !important; }
 
@@ -270,7 +315,6 @@ a { color: var(--gold); }
 .boot-screen {
   display: grid;
   place-items: center;
-  min-height: 55vh;
 }
 .boot-lockup { text-align: center; animation: bootpulse 1.2s steps(2) infinite; }
 .boot-mark {
