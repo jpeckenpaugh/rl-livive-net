@@ -188,8 +188,15 @@ const Sound = (() => {
   let musicGain = null;
   // 1990s-arcade announcer voice pack (8-bit / 8 kHz callouts). Cosmetic only:
   // every path here fails soft so a missing clip or locked audio never breaks play.
-  const VOICE_NAMES = ["coin", "select", "round_one", "round_two", "round_three", "fight", "perfect", "flawless", "ko", "you_win", "you_lose", "game_over", "new_challenger", "time_up", "take_off"];
+  // assets/voice/manifest.json is authoritative for which clips exist. The
+  // fallback list below is preloaded immediately so the original callouts never
+  // regress when the manifest fetch is slow or unavailable; new dynamic clips
+  // (player_1..player_4, event/modifier/easter-egg ids) are picked up from the
+  // manifest as the voice pack grows.
+  const VOICE_FALLBACK = ["coin", "select", "round_one", "round_two", "round_three", "fight", "perfect", "flawless", "ko", "you_win", "you_lose", "game_over", "new_challenger", "time_up", "take_off"];
   const voiceClips = new Map();
+  let voiceManifest = null;
+  let voiceIds = new Set();
   let voicesOn = true;
   let voicesLoaded = false;
 
@@ -367,21 +374,47 @@ const Sound = (() => {
     if (musicOn) { ensure(); startMusic(); } else stopMusic();
     return musicOn;
   }
+  // File name for a clip id. New catalog entries may name their WAV explicitly
+  // in the manifest; legacy clips fall back to `<id>.wav`.
+  function clipFile(id) {
+    const rec = voiceManifest && voiceManifest[id];
+    return rec && rec.file ? rec.file : `${id}.wav`;
+  }
+  function preloadClip(id) {
+    try {
+      const clip = new Audio();
+      clip.preload = "auto";
+      clip.addEventListener("error", () => voiceClips.delete(id));
+      clip.src = new URL(`assets/voice/${clipFile(id)}`, document.baseURI).href;
+      clip.load();
+      voiceClips.set(id, clip);
+    } catch (err) { voiceClips.delete(id); }
+  }
+  // Read the manifest so the game follows the voice pack instead of a hardcoded
+  // list. Returns the clip ids, or null when the manifest cannot be read.
+  async function loadVoiceManifest() {
+    try {
+      const res = await fetch(new URL("assets/voice/manifest.json", document.baseURI).href, { cache: "force-cache" });
+      if (!res || !res.ok) return null;
+      const data = await res.json();
+      const lines = data && data.lines;
+      if (!lines || typeof lines !== "object") return null;
+      voiceManifest = lines;
+      return Object.keys(lines);
+    } catch (err) { return null; }
+  }
   // Preload the announcer clips after the first user gesture so the browser
   // autoplay policy is already satisfied when voice() calls play().
   function loadVoices() {
     if (voicesLoaded || typeof Audio === "undefined") return;
     voicesLoaded = true;
-    for (const name of VOICE_NAMES) {
-      try {
-        const clip = new Audio();
-        clip.preload = "auto";
-        clip.addEventListener("error", () => voiceClips.delete(name));
-        clip.src = new URL(`assets/voice/${name}.wav`, document.baseURI).href;
-        clip.load();
-        voiceClips.set(name, clip);
-      } catch (err) { voiceClips.delete(name); }
-    }
+    voiceIds = new Set(VOICE_FALLBACK);
+    for (const id of VOICE_FALLBACK) preloadClip(id);
+    loadVoiceManifest().then((ids) => {
+      if (!ids || !ids.length) return;
+      voiceIds = new Set(ids);
+      for (const id of ids) if (!voiceClips.has(id)) preloadClip(id);
+    });
   }
   // Play a named callout. No-ops when the voice layer is off, audio is still
   // locked, or the clip is missing/undecodable.
@@ -412,9 +445,300 @@ const Sound = (() => {
     isUnlocked: () => unlocked,
     isVoicesOn: () => voicesOn,
     currentTrack: () => trackId,
+    voiceNames: () => [...voiceIds],
+    clipFile: (id) => clipFile(id),
+    manifest: () => voiceManifest,
     setEnabled(on) { musicOn = on; if (on) startMusic(); else stopMusic(); },
   };
 })();
+
+/* ============================================================================
+ * VOICE COMPOSER — joins pre-baked clips into one callout
+ * ==========================================================================*/
+/*
+ * Decode each clip in a line once, then schedule the buffers back-to-back with a
+ * short gap so "Player 1" + "wins" reads as a single phrase. Fails soft: a
+ * missing or undecodable clip is dropped, and if Web Audio/decoding is
+ * unavailable the line simply does not play. This never throws.
+ */
+/* commentary-composer:start */
+function createVoiceComposer(deps) {
+  const gap = typeof deps.gap === "number" ? deps.gap : 0.06; // ~60 ms between clips
+  const buffers = new Map(); // clip id -> Promise<AudioBuffer|null>
+  let token = 0;
+  let active = null; // { sources: AudioBufferSourceNode[], endAt: number }
+
+  function loadBuffer(id) {
+    if (buffers.has(id)) return buffers.get(id);
+    const pending = (async () => {
+      try {
+        const ctx = deps.getContext();
+        if (!ctx || typeof ctx.decodeAudioData !== "function") return null;
+        const bytes = await deps.fetchBytes(deps.clipUrl(id));
+        if (!bytes || !bytes.byteLength) return null;
+        return await new Promise((resolve) => {
+          try { ctx.decodeAudioData(bytes.slice(0), resolve, () => resolve(null)); }
+          catch (err) { resolve(null); }
+        });
+      } catch (err) { return null; }
+    })();
+    buffers.set(id, pending);
+    return pending;
+  }
+
+  function stop() {
+    token += 1;
+    if (!active) return;
+    for (const src of active.sources) { try { src.stop(0); } catch (err) { /* fail soft */ } }
+    active = null;
+  }
+
+  // Play the clip ids in order. Resolves to { count, durationMs } once the
+  // sequence is scheduled (or { count: 0 } when nothing could be played).
+  async function play(ids) {
+    stop();
+    const ctx = deps.getContext();
+    if (!ctx || !Array.isArray(ids) || !ids.length) return { count: 0, durationMs: 0 };
+    const mine = token;
+    const decoded = await Promise.all(ids.map(loadBuffer));
+    if (mine !== token) return { count: 0, durationMs: 0 }; // interrupted while decoding
+    const bufs = decoded.filter(Boolean);
+    if (!bufs.length) return { count: 0, durationMs: 0 };
+    const sources = [];
+    let at = ctx.currentTime + 0.02;
+    let durationMs = 20;
+    for (const buffer of bufs) {
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.connect(ctx.destination);
+      try { src.start(at); } catch (err) { continue; }
+      sources.push(src);
+      at += buffer.duration + gap;
+      durationMs += buffer.duration * 1000 + gap * 1000;
+    }
+    if (!sources.length) return { count: 0, durationMs: 0 };
+    active = { sources, endAt: ctx.currentTime + durationMs / 1000 };
+    return { count: sources.length, durationMs };
+  }
+
+  return { play, stop, isPlaying: () => !!active };
+}
+/* commentary-composer:end */
+
+/* ============================================================================
+ * COMMENTARY DIRECTOR — reads match state, emits line intents, queues them
+ * ==========================================================================*/
+/*
+ * The director turns match context into line intents (event + priority +
+ * candidate clip ids) and plays them through a single queue: one line at a time
+ * (no talk-over), a per-event cool-down, consecutive de-dupe, and an interrupt
+ * that lets a big moment cut in front of a low-priority line. Every clip is
+ * resolved against the manifest, so a missing clip simply falls back or drops.
+ */
+/* commentary-director:start */
+function createCommentary(deps) {
+  // Internal queue ordering. "big" moments (round/match results) can interrupt
+  // the low-priority callouts (coin/select); easter eggs sit just below them.
+  const PRIORITY = { low: 1, color: 2, normal: 5, high: 8, easter: 9, big: 10 };
+  const DEFAULT_COOLDOWN = 4500;
+  const EASTER_COOLDOWN = 15000;
+  const MAX_QUEUE = 4;
+  const CLOSE_MARGIN = 3; // "by a hair"  (catalog: roundMargin <= 3)
+  const BIG_MARGIN = 40;  // "in a blowout" (catalog: roundMargin >= 40)
+
+  const queue = [];
+  const lastPlayedAt = new Map(); // event -> ms
+  const variantCursor = new Map(); // base id -> next variant index
+  let current = null; // { key, priority, event }
+  let running = false;
+  let wake = null;
+  let token = 0;
+
+  function now() { return deps.now ? deps.now() : Date.now(); }
+  // Expand a canonical id into its base/_2/_3 variants that actually exist, and
+  // rotate them so the same phrase does not repeat back to back.
+  function variantOf(id, have) {
+    const candidates = [id, `${id}_2`, `${id}_3`].filter((v) => have.has(v));
+    if (!candidates.length) return null;
+    const cursor = variantCursor.get(id) || 0;
+    variantCursor.set(id, cursor + 1);
+    return candidates[cursor % candidates.length];
+  }
+  function pick(ids) {
+    const have = deps.available();
+    const out = [];
+    for (const id of ids || []) {
+      if (!id) continue;
+      const chosen = variantOf(id, have);
+      if (chosen) out.push(chosen);
+    }
+    return out;
+  }
+  function resolve(intent) {
+    const have = deps.available();
+    const required = (intent.require || []).filter(Boolean);
+    if (required.length && !required.every((id) => have.has(id))) return pick(intent.fallback);
+    let ids = pick(intent.clips);
+    if (!ids.length) ids = pick(intent.fallback);
+    return ids;
+  }
+  function subject(slot) { return (slot != null && slot >= 0 && slot < 4) ? `player_${slot + 1}` : null; }
+
+  function sleep(ms) {
+    return new Promise((resolve) => {
+      const timer = deps.setTimer(() => { wake = null; resolve(); }, ms);
+      wake = () => { deps.clearTimer(timer); wake = null; resolve(); };
+    });
+  }
+  function interrupt() {
+    token += 1;
+    if (deps.stopPlayback) deps.stopPlayback();
+    if (wake) wake();
+  }
+
+  async function pump() {
+    if (running) return;
+    running = true;
+    try {
+      while (queue.length) {
+        const intent = queue.shift();
+        const ids = resolve(intent);
+        if (!ids.length) continue;
+        current = { key: intent.key || intent.event, priority: intent.priority || PRIORITY.normal, event: intent.event || intent.key };
+        const mine = ++token;
+        const result = await deps.play(ids);
+        lastPlayedAt.set(current.event, now());
+        if (result && result.durationMs && mine === token) await sleep(result.durationMs);
+        current = null;
+      }
+    } catch (err) { /* fail soft: commentary must never break the game */ }
+    finally { running = false; current = null; }
+  }
+
+  function say(intent) {
+    if (!intent || !deps.isEnabled()) return false;
+    const event = intent.event || intent.key || "line";
+    const key = intent.key || event;
+    if (current && current.key === key) return false; // already talking
+    if (queue.length && queue[queue.length - 1].key === key) return false; // de-dupe tail
+    const coolDown = intent.coolDown != null ? intent.coolDown : DEFAULT_COOLDOWN;
+    const last = lastPlayedAt.get(event);
+    if (coolDown > 0 && last != null && now() - last < coolDown) return false;
+    const priority = intent.priority || PRIORITY.normal;
+    if (current) {
+      if (priority > current.priority) {
+        queue.length = 0; // drop the low-priority backlog for a big moment
+        queue.push({ ...intent, priority, event, key });
+        interrupt();
+        return true;
+      }
+      queue.push({ ...intent, priority, event, key });
+      if (queue.length > MAX_QUEUE) queue.splice(0, queue.length - MAX_QUEUE);
+      return true;
+    }
+    queue.push({ ...intent, priority, event, key });
+    pump();
+    return true;
+  }
+
+  function stop() {
+    queue.length = 0;
+    interrupt();
+  }
+
+  // --- intent builders: read the gathered match context ----------------------
+  function roundStart(round) {
+    const clip = round >= 3 ? "round_three" : round === 2 ? "round_two" : "round_one";
+    return { event: "round_start", key: `round_start:${round}`, priority: PRIORITY.high, clips: [clip], fallback: [clip], coolDown: 0 };
+  }
+  function go() {
+    return { event: "go", key: "go", priority: PRIORITY.high, clips: ["fight"], fallback: ["fight"], coolDown: 0 };
+  }
+  function line(id, opts) {
+    return Object.assign({ event: id, key: id, priority: PRIORITY.normal, clips: [id], fallback: [id] }, opts || {});
+  }
+  // ctx: { round, winnerSlot, winnerLanded, margin, humanSlot, humanWon,
+  //        humanLanded, anyLanded, landedCount, crashedCount, slotCount }
+  function roundResult(ctx) {
+    const crashed = ctx.crashedCount || 0;
+    const winner = ctx.teamMode ? null : subject(ctx.winnerSlot);
+    const event = ctx.teamMode ? "team_takes_the_round" : (ctx.winnerLanded ? "sticks_the_landing" : "takes_the_round");
+    const clips = winner ? [winner, event] : [event];
+    if (ctx.landedCount >= 2 && ctx.margin > 0 && ctx.margin <= CLOSE_MARGIN) clips.push("by_a_hair");
+    else if (ctx.margin != null && ctx.margin >= BIG_MARGIN) clips.push("in_a_blowout");
+    else if (ctx.winnerLanded && crashed === 0 && ctx.slotCount > 1) clips.push("flawless");
+    const fallback = ctx.humanLanded && ctx.humanWon ? ["flawless"] : ctx.anyLanded ? ["perfect"] : ["ko"];
+    const require = winner ? [winner, event] : [event];
+    return { event: "round_result", key: `round_result:${ctx.round}`, priority: PRIORITY.big, clips, fallback, require, coolDown: 0 };
+  }
+  // Context-gated easter eggs; each stands alone (never composed with a subject).
+  function easterEgg(ctx) {
+    if ((ctx.crashedCount || 0) >= 2) return "houston";                       // 2+ crashes in a round
+    if (ctx.slotCount === 4 && ctx.landedCount === 4) return "all_four_land";  // everyone walked away
+    if (ctx.anyLanded && ctx.margin > 0 && ctx.margin <= CLOSE_MARGIN) return "photo_finish";
+    return null;
+  }
+  function easterLine(id) {
+    return { event: `easter_egg:${id}`, key: `easter_egg:${id}`, priority: PRIORITY.easter, clips: [id], fallback: [], require: [id], coolDown: EASTER_COOLDOWN };
+  }
+  function takesTheLead(ctx) {
+    const s = subject(ctx.leadSlot);
+    return { event: "takes_the_lead", key: "takes_the_lead", priority: PRIORITY.normal, clips: [s, "takes_the_lead"], fallback: [], require: [s, "takes_the_lead"], coolDown: 8000 };
+  }
+  function matchWin(slot) {
+    const s = subject(slot);
+    return { event: "match_win", key: "match_win", priority: PRIORITY.big, clips: [s, "wins"], fallback: ["you_win"], require: [s, "wins"], coolDown: 0 };
+  }
+  function matchLose() {
+    return { event: "match_lose", key: "match_lose", priority: PRIORITY.big, clips: ["you_lose"], fallback: ["you_lose"], coolDown: 0 };
+  }
+
+  return {
+    say, stop,
+    roundStart: (round) => say(roundStart(round)),
+    go: () => say(go()),
+    line: (id, opts) => say(line(id, opts)),
+    // The round result plays as a composed line, then any easter egg stands alone.
+    roundResult: (ctx) => {
+      const ok = say(roundResult(ctx));
+      const egg = easterEgg(ctx);
+      if (egg) say(easterLine(egg));
+      return ok;
+    },
+    takesTheLead: (ctx) => say(takesTheLead(ctx)),
+    matchWin: (slot) => say(matchWin(slot)),
+    matchLose: () => say(matchLose()),
+    // exposed for tests / debugging
+    _build: { roundStart, go, line, roundResult, takesTheLead, matchWin, matchLose, easterEgg, easterLine },
+    _resolve: resolve,
+    _queueLength: () => queue.length,
+    _isBusy: () => !!(current || running),
+  };
+}
+/* commentary-director:end */
+
+/*
+ * Wire the director to the live cabinet: the composer decodes through the
+ * shared AudioContext, and clip availability comes from Sound's manifest.
+ */
+const Composer = createVoiceComposer({
+  gap: 0.06,
+  getContext: () => Sound.ensure(),
+  clipUrl: (id) => new URL(`assets/voice/${Sound.clipFile(id)}`, document.baseURI).href,
+  fetchBytes: (url) => fetch(url, { cache: "force-cache" })
+    .then((res) => (res && res.ok ? res.arrayBuffer() : null))
+    .catch(() => null),
+});
+
+const Commentary = createCommentary({
+  play: (ids) => Composer.play(ids),
+  stopPlayback: () => Composer.stop(),
+  available: () => new Set(Sound.voiceNames()),
+  isEnabled: () => Sound.isVoicesOn() && Sound.isUnlocked(),
+  now: () => Date.now(),
+  setTimer: (fn, ms) => setTimeout(fn, ms),
+  clearTimer: (timer) => clearTimeout(timer),
+});
 
 /* ---------------------------------------------------------------- screens */
 const SCREEN_NAMES = ["boot", "attract", "menu", "solo", "mode", "players", "mods", "roundintro", "match", "win", "lose", "cup", "about"];
@@ -974,7 +1298,7 @@ function hazardIntroText() {
 function beginRound() {
   match.round += 1;
   match.roundSteps = 0;
-  Sound.voice(match.round >= 3 ? "round_three" : match.round === 2 ? "round_two" : "round_one");
+  Commentary.roundStart(match.round);
   match.gravity = gravityFor(match.hazards);
   const seed = (match.seedBase + match.round * 2654435761) >>> 0;
   match.roundSeed = seed;
@@ -1005,7 +1329,7 @@ function runCountdown(done) {
   const el = $("roundintro-count");
   const tick = () => {
     if (n > 0) { if (el) el.textContent = String(n); Sound.sfx("countdown"); n -= 1; setTimeout(tick, 700); }
-    else { if (el) el.textContent = "GO"; Sound.voice("fight"); Sound.sfx("go"); setTimeout(() => done(), 500); }
+    else { if (el) el.textContent = "GO"; Commentary.go(); Sound.sfx("go"); setTimeout(() => done(), 500); }
   };
   tick();
 }
@@ -1111,10 +1435,22 @@ function teamLanded(match, teamIdx) {
   return match.teams[teamIdx].every((slot) => match.simBySlot[slot]?.outcome === "LANDED");
 }
 
+/* Cumulative leader by total score; -1 when no pilots. Drives "takes the lead". */
+function leaderSlot() {
+  if (!match || !match.pilots.length) return -1;
+  let best = -1, bestTotal = -Infinity;
+  for (const p of match.pilots) {
+    const total = match.stats[p.slot].total;
+    if (total > bestTotal) { bestTotal = total; best = p.slot; }
+  }
+  return best;
+}
+
 function finishRound() {
   match.phase = "roundComplete";
   match.simBySlot = {};
   for (const sim of multiSims) if (sim.pilot) match.simBySlot[sim.pilot.slot] = sim;
+  const prevLeader = match.round > 1 ? leaderSlot() : null;
   const ranked = multiSims.filter((s) => s.pilot).slice().sort(compareSims);
   // Every mode gets a full 1..N placement so the lanes can crown their pilots.
   ranked.forEach((sim, idx) => { sim.placement = idx + 1; });
@@ -1147,6 +1483,9 @@ function finishRound() {
     }
     info = { winnerTeam: null, winnerSlot: ranked[0].pilot.slot, margin: ranked[0].reward - (ranked[1]?.reward || 0), scores: ranked.map((s) => s.reward), cup: true };
   }
+  const newLeader = leaderSlot();
+  info.leadChanged = prevLeader != null && newLeader !== prevLeader;
+  info.leadSlot = newLeader;
   drawPanels();
   updateMatchPips();
   showRoundResult(info);
@@ -1193,13 +1532,32 @@ function showRoundResult(info) {
   if (cont) { cont.textContent = matchOver ? "RESULTS ▶" : "NEXT ROUND ▶"; cont.hidden = false; }
   if (currentScreenName !== "match") showScreen("match");
   showMatchBanner(true, matchOver);
-  // Announcer reacts to the round: clean human landing = flawless, any landing
-  // this round = perfect, otherwise the round ended in wrecks = K.O.
+  // Announcer reacts to the round. The director composes a Player N line from
+  // the round context (subject + event + modifier) and falls back to the classic
+  // flawless/perfect/K.O. clips when the new dynamic clips are not baked yet.
   const roundSims = Object.values(match.simBySlot || {}).filter(Boolean);
   const humanSim = match.humanSlot >= 0 ? match.simBySlot[match.humanSlot] : null;
   const humanLanded = !!(humanSim && humanSim.outcome === "LANDED");
   const anyLanded = roundSims.some((s) => s.outcome === "LANDED");
-  Sound.voice(!humanLost && humanLanded ? "flawless" : anyLanded ? "perfect" : "ko");
+  const landedCount = roundSims.filter((s) => s.outcome === "LANDED").length;
+  const crashedCount = roundSims.filter((s) => s.outcome === "CRASHED").length;
+  const winnerSlot = info.cup ? info.winnerSlot : (info.winnerTeam != null && info.winnerTeam >= 0 ? match.teams[info.winnerTeam][0] : null);
+  const winnerSim = winnerSlot != null ? match.simBySlot[winnerSlot] : null;
+  Commentary.roundResult({
+    round: match.round,
+    teamMode: !!match.teams,
+    winnerSlot,
+    winnerLanded: !!(winnerSim && winnerSim.outcome === "LANDED"),
+    margin: Math.abs(info.margin || 0),
+    humanSlot: match.humanSlot,
+    humanWon: !humanLost,
+    humanLanded,
+    anyLanded,
+    landedCount,
+    crashedCount,
+    slotCount: roundSims.length,
+  });
+  if (info.leadChanged) Commentary.takesTheLead({ leadSlot: info.leadSlot });
   if (!humanLost && info.winnerTeam !== -1) { Sound.sfx("land"); startConfetti($("match-confetti"), color); }
 }
 
@@ -1273,7 +1631,7 @@ function showWin(championSlot) {
   const tag = $("win-tagline");
   if (tag) tag.textContent = pick(TAGLINES.winnerMatch);
   showScreen("win");
-  Sound.voice("you_win");
+  Commentary.matchWin(championSlot);
   Sound.sfx("fanfare");
   requestAnimationFrame(() => startConfetti($("win-confetti"), champ.color));
 }
@@ -1303,8 +1661,8 @@ function showLose() {
       marginEl.textContent = `${match.stats[human.slot].total.toFixed(0)} pts · ${match.pilots[match.champion].shortName} took the cup`;
     }
   }
-  Sound.voice("you_lose");
-  setTimeout(() => Sound.voice("game_over"), 1200);
+  Commentary.matchLose();
+  Commentary.line("game_over", { priority: 8 });
   Sound.sfx("lose");
   showScreen("lose");
 }
@@ -1380,7 +1738,7 @@ function openMods(context) {
     if (title) title.textContent = "ROUND MODIFIERS";
     if (chip) chip.textContent = `CUP · ROUND ${match.round + 1} OF ${match.totalRounds}`;
     // Cup only: each pit stop past the opener introduces the next challenger.
-    if (match.round >= 1) Sound.voice("new_challenger");
+    if (match.round >= 1) Commentary.line("new_challenger");
   } else {
     if (title) title.textContent = "MATCH MODIFIERS";
     if (chip) chip.textContent = match.mode === "versus" ? "1 v 1 · BEST OF 3" : "2 v 2 · BEST OF 3";
@@ -1838,13 +2196,14 @@ function wireEvents() {
   const voiceBtn = $("voice-toggle");
   if (voiceBtn) voiceBtn.addEventListener("click", () => {
     const on = Sound.toggleVoices();
+    if (!on) Commentary.stop();
     voiceBtn.textContent = on ? "VOICE ON" : "VOICE OFF";
     voiceBtn.setAttribute("aria-pressed", String(on));
     Sound.sfx("menu");
   });
 
   const start = $("start-game");
-  if (start) start.addEventListener("click", () => { Sound.unlock(); Sound.sfx("coin"); Sound.voice("coin"); showScreen("menu"); });
+  if (start) start.addEventListener("click", () => { Sound.unlock(); Sound.sfx("coin"); Commentary.line("coin"); showScreen("menu"); });
 
   document.querySelectorAll("[data-screen]").forEach((btn) => {
     btn.addEventListener("click", () => { Sound.sfx("menu"); showScreen(btn.dataset.screen); });
@@ -1858,7 +2217,7 @@ function wireEvents() {
       for (let i = 0; i < slotCount; i++) playerModels.push(defaultModelFor(i, cabinetMode));
       renderPlayers();
       showScreen("players");
-      Sound.voice("select");
+      Commentary.line("select");
     });
   });
   const confirm = $("players-confirm");
@@ -1870,7 +2229,7 @@ function wireEvents() {
   const modsRec = $("mods-recommend");
   if (modsRec) modsRec.addEventListener("click", () => { if (match) { match.hazards = { ...HAZARD_KEYS, ...RECOMMENDED }; Sound.sfx("menu"); renderHazardGrid(); } });
   const modsBack = $("mods-back");
-  if (modsBack) modsBack.addEventListener("click", () => { Sound.sfx("menu"); renderPlayers(); showScreen("players"); Sound.voice("select"); });
+  if (modsBack) modsBack.addEventListener("click", () => { Sound.sfx("menu"); renderPlayers(); showScreen("players"); Commentary.line("select"); });
 
   const matchContinue = $("match-continue");
   if (matchContinue) matchContinue.addEventListener("click", () => { Sound.sfx("select"); continueAfterRound(); });
