@@ -91,6 +91,15 @@ body {
   -webkit-font-smoothing: none;
 }
 img, canvas { max-width: 100%; }
+/* Playfield canvases are sized by app.js `fitPixelCanvas` (whole-number
+ * display scale x devicePixelRatio). Keep them nearest-neighbour so pixels
+ * never blur when the browser maps or shrinks the backing store. */
+#attract-canvas, #solo-canvas, .multi-sim-card canvas {
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+  margin-inline: auto;
+}
 a { color: var(--gold); }
 
 /* ------------------------------------------------------------- cabinet frame */
@@ -338,7 +347,7 @@ a { color: var(--gold); }
 .attract-screen {
   display: grid;
   grid-template-columns: 1.4fr 1fr;
-  grid-template-areas: "hero panel" "demo panel";
+  grid-template-areas: "hero panel" "demo demo";
   gap: 20px;
   align-items: start;
 }
@@ -388,7 +397,7 @@ a { color: var(--gold); }
 .hs-rank { color: var(--gold); }
 .hs-pts { color: var(--amber); }
 .attract-demo { grid-area: demo; position: relative; }
-.attract-demo canvas { display: block; width: 100%; border: 2px solid var(--line); background: var(--void); image-rendering: pixelated; }
+.attract-demo canvas { display: block; height: auto; border: 2px solid var(--line); background: var(--void); image-rendering: pixelated; }
 .attract-demo-badge,
 .attract-demo-pilot,
 .attract-demo-press,
@@ -460,7 +469,7 @@ a { color: var(--gold); }
 .controller:disabled { cursor: default; opacity: .75; }
 .controller-help { grid-column: 2; margin: 0; color: var(--muted); font-size: var(--type-lead); }
 .screen-wrap { position: relative; padding: 15px 15px 0; }
-.screen-wrap canvas { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; background: var(--void); border: 2px solid #2a3742; }
+.screen-wrap canvas { display: block; height: auto; background: var(--void); border: 2px solid #2a3742; }
 .overlay { position: absolute; inset: 15px 15px 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: #0a0b10e0; color: var(--slate); text-align: center; padding: 20px; }
 .overlay[hidden], .overlay.hidden { display: none; }
 .overlay.error { color: var(--p4); }
@@ -592,7 +601,7 @@ select:focus-visible, input:focus-visible, .cab-btn:focus-visible, .controller:f
 .placement.gold { color: var(--void); background: var(--gold); }
 .placement.ranked { color: var(--gold); border: 1px solid #6f5a2a; }
 .multi-sim-viewport { position: relative; border-top: 1px solid #2a3742; }
-.multi-sim-card canvas { width: 100%; height: auto; aspect-ratio: 3/2; display: block; }
+.multi-sim-card canvas { height: auto; display: block; }
 .lane-place {
   position: absolute;
   inset: 0;

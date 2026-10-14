@@ -770,6 +770,8 @@ function showScreen(name) {
   resetMenuFocus();
   // The cabinet is a single fixed frame — the document cannot scroll, so there
   // is nothing to reset here. Long screens scroll inside `.cabinet-screen`.
+  // Re-fit playfield canvases for the newly visible screen (hidden ones were 0px).
+  schedulePixelFit();
 }
 function setStatus(message) {
   const el = $("cabinet-status");
@@ -873,8 +875,76 @@ const $canvas = (id) => { const c = $(id); return c ? c.getContext("2d") : null;
 const VIEWPORT_HALF_H = 400 / SCALE / 2;
 function screenPoint(point) { return [point[0] * SCALE, 400 - point[1] * SCALE]; }
 
+/* -------------------------------------------------- pixel-perfect scaling
+ * Playfields are always drawn in their native 600x400 logical space; the
+ * backing store is sized in whole device pixels and the browser maps it 1:1.
+ * Frames at least one native-width wide upscale by whole numbers only (1x/2x,
+ * never 1.6x). Frames narrower than native - the attract demo and the 2-up
+ * match lanes - keep a native-resolution backing store with an integer
+ * device scale so the draw transform never goes fractional, and CSS shrinks
+ * the element to the frame with nearest-neighbour (`image-rendering:
+ * pixelated`); the browser downscales those thumbnails, it does not blur
+ * them. */
+const NATIVE_W = 600, NATIVE_H = 400;
+function devicePixelRatioInt() { return Math.max(1, Math.round(window.devicePixelRatio || 1)); }
+
+/* Apply the fitted device-pixel scale and return the logical (native) size so
+ * callers keep drawing in 600x400 coordinates. */
+function beginPixelFrame(canvas, ctx, nativeW = NATIVE_W, nativeH = NATIVE_H) {
+  const w = Number(canvas.dataset.logicalW) || nativeW;
+  const h = Number(canvas.dataset.logicalH) || nativeH;
+  const scale = Number(canvas.dataset.pixelScale) || 1;
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  return { w, h };
+}
+
+/* Size a game canvas for its parent frame, at the current devicePixelRatio.
+ * Hidden (zero-width) parents are left untouched so the next visible fit can
+ * run. Height is intentionally not measured: the wrap grows with the canvas,
+ * so a height read would be circular. */
+function fitPixelCanvas(canvas, nativeW = NATIVE_W, nativeH = NATIVE_H) {
+  if (!canvas) return;
+  const host = canvas.parentElement || canvas;
+  const styles = getComputedStyle(host);
+  const padX = parseFloat(styles.paddingLeft || "0") + parseFloat(styles.paddingRight || "0");
+  const availW = (host.clientWidth || 0) - padX;
+  if (!(availW > 0)) return;
+  const dpr = window.devicePixelRatio || 1;
+  let displayW, deviceScale;
+  if (availW >= nativeW) {
+    const cssScale = Math.floor(availW / nativeW); // whole-number upscale
+    displayW = nativeW * cssScale;
+    deviceScale = cssScale * dpr;
+  } else {
+    displayW = availW;                 // CSS shrinks the element to the frame
+    deviceScale = devicePixelRatioInt(); // integer transform, no soft fringe
+  }
+  canvas.dataset.logicalW = String(nativeW);
+  canvas.dataset.logicalH = String(nativeH);
+  canvas.dataset.pixelScale = String(deviceScale);
+  canvas.width = Math.max(1, Math.round(nativeW * deviceScale));
+  canvas.height = Math.max(1, Math.round(nativeH * deviceScale));
+  canvas.style.width = `${displayW.toFixed(2)}px`;
+  canvas.style.height = `${(displayW * nativeH / nativeW).toFixed(2)}px`;
+  const ctx = canvas.getContext("2d");
+  if (ctx) ctx.imageSmoothingEnabled = false;
+}
+
+function fitAllPixelCanvases() {
+  fitPixelCanvas($("attract-canvas"));
+  fitPixelCanvas($("solo-canvas"));
+  document.querySelectorAll(".multi-sim-card canvas").forEach((c) => fitPixelCanvas(c));
+}
+
+let pixelFitQueued = false;
+function schedulePixelFit() {
+  if (pixelFitQueued) return;
+  pixelFitQueued = true;
+  requestAnimationFrame(() => { pixelFitQueued = false; fitAllPixelCanvases(); });
+}
+
 function drawScene(canvas, ctx, scene, action, pcolor) {
-  const w = canvas.width, h = canvas.height;
+  const { w, h } = beginPixelFrame(canvas, ctx);
   ctx.clearRect(0, 0, w, h);
   ctx.fillStyle = "#0A0B10";
   ctx.fillRect(0, 0, w, h);
@@ -1210,6 +1280,9 @@ function drawPanels() {
     const active = sim.pilot != null;
     sim.el.hidden = !active;
     if (!active) continue;
+    // First time this lane is visible its canvas may still be at the native
+    // default; fit it once the card has laid out.
+    if (!sim.canvas.dataset.pixelScale) fitPixelCanvas(sim.canvas);
     drawScene(sim.canvas, sim.ctx, sim.state, sim.action, sim.pilot.color);
     const stats = match.stats[sim.pilot.slot];
     sim.plate.textContent = `P${sim.pilot.slot + 1} · ${sim.pilot.shortName}`;
@@ -2363,6 +2436,14 @@ function wireEvents() {
     handleMenuKey(e);
   });
   document.addEventListener("visibilitychange", () => { if (document.hidden) pressed.clear(); });
+
+  // Keep playfields crisp when the frame or the display density changes.
+  window.addEventListener("resize", schedulePixelFit);
+  window.addEventListener("orientationchange", schedulePixelFit);
+  if (window.matchMedia) {
+    const dprQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+    if (dprQuery && dprQuery.addEventListener) dprQuery.addEventListener("change", schedulePixelFit);
+  }
 }
 
 function rematch() {
