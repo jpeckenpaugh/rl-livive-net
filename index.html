@@ -118,9 +118,16 @@
                 </div>
                 <div class="title-panel" id="title-panel-players" hidden>
                   <p class="attract-eyebrow" id="players-chip">CHOOSE PILOTS · VERSUS</p>
-                  <div class="slot-row" id="players-grid"></div>
-                  <p class="attract-eyebrow" id="players-hint">TAP A SLOT, THEN PICK A PILOT</p>
-                  <div class="pilot-cards" id="mp-pilot-cards" role="group" aria-label="Choose pilot for the active slot"></div>
+                  <div id="players-slots-step" class="players-step">
+                    <div class="slot-row" id="players-grid"></div>
+                    <p class="attract-eyebrow" id="players-hint">TAP A SLOT TO PICK ITS PILOT</p>
+                  </div>
+                  <div id="players-pilots-step" class="players-step" hidden>
+                    <p class="attract-eyebrow" id="players-step-title">SELECT PILOT 1</p>
+                    <div class="menu-scroll">
+                      <div class="pilot-cards" id="mp-pilot-cards" role="group" aria-label="Choose pilot for the active slot"></div>
+                    </div>
+                  </div>
                   <div class="menu-stack menu-stack-tight">
                     <button class="cab-btn cab-btn-primary" id="players-confirm" type="button"><b>START MATCH</b></button>
                   </div>
@@ -128,7 +135,9 @@
                 <div class="title-panel" id="title-panel-houserules" hidden>
                   <p class="attract-eyebrow" id="mods-title">HOUSE RULES</p>
                   <p class="seed-chip" id="mods-seed">COURSE SEED — · LOCKED</p>
-                  <div class="hazard-grid" id="mods-grid"></div>
+                  <div class="menu-scroll">
+                    <div class="hazard-grid" id="mods-grid"></div>
+                  </div>
                   <p class="loadout-summary" id="mods-summary">HAZARDS ARMED: 0 · DIFFICULTY ☆☆☆</p>
                   <div class="menu-stack menu-stack-tight mods-actions">
                     <button class="cab-btn cab-btn-ghost" id="mods-clear" type="button">CLEAR ALL</button>

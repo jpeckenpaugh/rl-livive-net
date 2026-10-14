@@ -716,9 +716,13 @@ a { color: var(--gold); }
 
 /* ------------------------------------------------------------------- menu */
 .center-screen { max-width: 560px; margin: 0 auto; }
+/* Big single cards (round intro, cup) center in the whole screen, not the top. */
+.screen.center-screen { display: flex; align-items: center; justify-content: center; }
 .menu-stack { display: grid; gap: 12px; }
 .cab-mode, .menu-stack .cab-btn { width: 100%; }
 .cab-mode b { color: var(--p1); }
+/* Menu buttons read as game options: text centered, not left-aligned. */
+.menu-stack .cab-btn, .cab-mode, .result-menu .cab-btn { text-align: center; justify-items: center; }
 
 /* Choose Your Pilot — a grid of arcade cards over the title layout. */
 .pilot-cards {
@@ -758,15 +762,19 @@ a { color: var(--gold); }
 }
 .pilot-tag.default { color: var(--void); background: var(--gold); border-color: var(--amber); }
 
-/* Multi-player menus over the title layout: Choose Pilots + House Rules. */
+/* Multi-player menus over the title layout: Choose Pilots + House Rules.
+   Long lists scroll inside the panel (menu-scroll), never the cabinet viewport. */
 .attract-screen[data-panel="players"] .attract-boards,
 .attract-screen[data-panel="mods"] .attract-boards { display: none; }
-.attract-screen[data-panel="players"] .attract-content,
-.attract-screen[data-panel="mods"] .attract-content { overflow-y: auto; }
-.attract-screen[data-panel="players"] .attract-hero,
-.attract-screen[data-panel="mods"] .attract-hero { justify-content: flex-start; }
 .attract-screen[data-panel="players"] .attract-slot,
 .attract-screen[data-panel="mods"] .attract-slot { width: min(100%, 800px); }
+.menu-scroll {
+  width: 100%;
+  max-height: 46cqh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.players-step { width: 100%; }
 .slot-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; }
 .slot-card {
   display: grid;
@@ -1050,6 +1058,54 @@ select:focus-visible, input:focus-visible, .cab-btn:focus-visible, .controller:f
   z-index: 3;
 }
 .match-hud .match-quit { margin-left: auto; }
+.match-hud .match-round, .match-hud .match-pips {
+  padding: 5px 9px;
+  background: rgba(10, 11, 16, 0.7);
+  border: 1px solid #2a3742;
+}
+/* Per-lane HUD: pilot name + points over each playfield. */
+.lane-hud {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  pointer-events: none;
+}
+.lane-hud-left { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.lane-name {
+  font: var(--type-caption)/1 var(--display);
+  letter-spacing: 1px;
+  color: var(--pilot-color, var(--text));
+  background: rgba(10, 11, 16, 0.72);
+  border: 1px solid #2a3742;
+  padding: 3px 7px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lane-points {
+  font: var(--type-caption)/1 var(--display);
+  letter-spacing: 1px;
+  color: var(--amber);
+  background: rgba(10, 11, 16, 0.72);
+  border: 1px solid #2a3742;
+  padding: 3px 7px;
+  white-space: nowrap;
+}
+.lane-points.done { color: var(--void); background: var(--amber); }
+.lane-place-badge {
+  font: var(--type-micro)/1 var(--display);
+  padding: 3px 6px;
+  color: var(--slate);
+  background: rgba(10, 11, 16, 0.72);
+  border: 1px solid #2a3742;
+}
+.lane-place-badge.gold { color: var(--void); background: var(--gold); }
+.lane-place-badge.ranked { color: var(--gold); border-color: #6f5a2a; }
 .match-round { font: var(--type-small)/1 var(--display); color: var(--slate); letter-spacing: 1px; }
 .match-pips { font: var(--type-small)/1 var(--body); color: var(--amber); letter-spacing: 2px; }
 .multi-board {

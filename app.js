@@ -1397,25 +1397,24 @@ function initializePanels() {
     card.className = "multi-sim-card";
     card.dataset.slot = String(i);
     card.style.setProperty("--pilot-color", PILOT_COLORS[i]);
-    const head = document.createElement("div"); head.className = "multi-sim-heading";
-    const plate = document.createElement("strong"); plate.className = "model-name";
-    const place = document.createElement("span"); place.className = "placement";
-    head.append(plate, place);
     const viewport = document.createElement("div"); viewport.className = "multi-sim-viewport";
     const canvas = document.createElement("canvas"); canvas.width = 600; canvas.height = 400;
     canvas.setAttribute("aria-label", `Pilot ${i + 1} flight`);
+    const laneHud = document.createElement("div"); laneHud.className = "lane-hud";
+    const nameEl = document.createElement("span"); nameEl.className = "lane-name";
+    const placeEl = document.createElement("span"); placeEl.className = "lane-place-badge"; placeEl.hidden = true;
+    const left = document.createElement("span"); left.className = "lane-hud-left"; left.append(nameEl, placeEl);
+    const pointsEl = document.createElement("span"); pointsEl.className = "lane-points";
+    laneHud.append(left, pointsEl);
     const lanePlace = document.createElement("div"); lanePlace.className = "lane-place"; lanePlace.hidden = true;
     const lanePlaceNum = document.createElement("span"); lanePlaceNum.className = "lane-place-num";
     const lanePlaceLabel = document.createElement("span"); lanePlaceLabel.className = "lane-place-label";
     lanePlace.append(lanePlaceNum, lanePlaceLabel);
-    viewport.append(canvas, lanePlace);
-    const foot = document.createElement("div"); foot.className = "multi-sim-reward";
-    const status = document.createElement("span"); status.className = "sim-outcome";
-    foot.append(status);
-    card.append(head, viewport, foot);
+    viewport.append(canvas, laneHud, lanePlace);
+    card.append(viewport);
     board.append(card);
     multiSims.push({
-      index: i, el: card, plate, place, status, canvas, ctx: canvas.getContext("2d"),
+      index: i, el: card, nameEl, placeEl, pointsEl, canvas, ctx: canvas.getContext("2d"),
       lanePlace, lanePlaceNum, lanePlaceLabel,
       state: null, prevObservation: null, action: 0, reward: 0, done: false,
       outcome: "FLYING", steps: 0, placement: null, pilot: null,
@@ -1433,10 +1432,15 @@ function drawPanels() {
     if (!sim.canvas.dataset.pixelScale) fitPixelCanvas(sim.canvas);
     drawScene(sim.canvas, sim.ctx, sim.state, sim.action, sim.pilot.color);
     const stats = match.stats[sim.pilot.slot];
-    sim.plate.textContent = `P${sim.pilot.slot + 1} · ${sim.pilot.shortName}`;
+    const roundPts = sim.reward;
+    const total = (stats ? stats.total : 0) + roundPts;
+    sim.nameEl.textContent = `P${sim.pilot.slot + 1} · ${sim.pilot.shortName}`;
     sim.el.style.setProperty("--pilot-color", sim.pilot.color);
-    sim.place.textContent = sim.placement ? placeText(sim.placement) : "";
-    sim.place.className = `placement${sim.placement === 1 ? " gold" : sim.placement ? " ranked" : ""}`;
+    sim.pointsEl.textContent = `${total.toFixed(0)} PTS`;
+    sim.pointsEl.classList.toggle("done", sim.done);
+    sim.placeEl.hidden = !sim.placement;
+    sim.placeEl.textContent = sim.placement ? placeText(sim.placement) : "";
+    sim.placeEl.className = `lane-place-badge${sim.placement === 1 ? " gold" : sim.placement ? " ranked" : ""}`;
     // Big lane-place overlay: only shown once the round is ranked.
     const showPlace = !!sim.placement && match.phase === "roundComplete";
     sim.lanePlace.hidden = !showPlace;
@@ -1444,14 +1448,6 @@ function drawPanels() {
       sim.lanePlace.style.setProperty("--pilot-color", sim.pilot.color);
       sim.lanePlaceNum.textContent = String(sim.placement);
       sim.lanePlaceLabel.textContent = placeText(sim.placement).toUpperCase();
-    }
-    const roundPts = sim.reward;
-    if (sim.done) {
-      sim.status.textContent = `${sim.outcome} · ROUND ${roundPts.toFixed(1)} · TOTAL ${(stats ? stats.total + roundPts : roundPts).toFixed(1)} pts`;
-      sim.status.classList.add("complete");
-    } else {
-      sim.status.textContent = `FLYING · ROUND ${roundPts.toFixed(1)} · TOTAL ${(stats ? stats.total + roundPts : roundPts).toFixed(1)} pts`;
-      sim.status.classList.remove("complete");
     }
   }
 }
@@ -2124,6 +2120,7 @@ function updateModsSummary() {
  * PLAYERS SCREEN
  * ==========================================================================*/
 let mpActiveSlot = 0;
+let mpStep = "slots";
 function renderPlayers() {
   const slotsEl = $("players-grid"); if (!slotsEl) return;
   const mode = cabinetMode;
@@ -2133,8 +2130,6 @@ function renderPlayers() {
   if (mpActiveSlot >= slotCount) mpActiveSlot = 0;
   const chip = $("players-chip");
   if (chip) chip.textContent = mode === "versus" ? "CHOOSE PILOTS · VERSUS 1 v 1" : mode === "doubles" ? "CHOOSE PILOTS · DOUBLES 2 v 2" : "CHOOSE PILOTS · CUP";
-  const hint = $("players-hint");
-  if (hint) hint.textContent = `SLOT ${mpActiveSlot + 1} — PICK A PILOT`;
   slotsEl.replaceChildren(...playerModels.map((mid, slot) => {
     const human = mid === "human";
     const card = document.createElement("button");
@@ -2145,9 +2140,15 @@ function renderPlayers() {
     const nm = document.createElement("strong"); nm.textContent = human ? "HUMAN PILOT" : modelLabel(mid);
     const rl = document.createElement("small"); rl.textContent = human ? "you fly" : modelRole(mid);
     card.append(n, nm, rl);
-    card.addEventListener("click", () => { Sound.sfx("select"); mpActiveSlot = slot; renderPlayers(); });
+    card.addEventListener("click", () => { Sound.sfx("select"); mpActiveSlot = slot; mpStep = "pilots"; renderPlayers(); });
     return card;
   }));
+  const slotsStep = $("players-slots-step");
+  const pilotsStep = $("players-pilots-step");
+  if (slotsStep) slotsStep.hidden = mpStep !== "slots";
+  if (pilotsStep) pilotsStep.hidden = mpStep !== "pilots";
+  const stepTitle = $("players-step-title");
+  if (stepTitle) stepTitle.textContent = `SELECT PILOT ${mpActiveSlot + 1}`;
   const cardsEl = $("mp-pilot-cards"); if (!cardsEl) return;
   const options = (mpActiveSlot === 0 && mode !== "cup")
     ? [{ id: "human", label: "Human Pilot", algorithm: "YOU" }, ...catalog]
@@ -2167,6 +2168,7 @@ function renderPlayers() {
     card.addEventListener("click", () => {
       playerModels[mpActiveSlot] = m.id;
       Sound.sfx("select");
+      mpStep = "slots";
       if (mpActiveSlot < slotCount - 1) mpActiveSlot += 1;
       renderPlayers();
     });
@@ -2662,6 +2664,8 @@ function wireEvents() {
       Sound.sfx("select");
       cabinetMode = btn.dataset.mode;
       playerModels = [];
+      mpActiveSlot = 0;
+      mpStep = "slots";
       const slotCount = cabinetMode === "versus" ? 2 : 4;
       for (let i = 0; i < slotCount; i++) playerModels.push(defaultModelFor(i, cabinetMode));
       renderPlayers();
