@@ -300,7 +300,14 @@ a { color: var(--gold); }
    cabinet box so `.cabinet-stage` (and therefore `.cabinet-screen`) keeps one
    geometry on every pointer type. Only the deck's interactive contents are
    revealed on `pointer:coarse`; the panel chrome stays put so mobile is a pure
-   scale of the same cabinet, never a reflow. */
+   scale of the same cabinet, never a reflow.
+   AIA-39/F3 accepted-size decision: because the cabinet is a fixed 1060x740 box
+   drawn at a pure scale (D5), on a 390x844 coarse pointer the whole cabinet —
+   and the deck with it — renders at ~0.365x. Reaching the 44px touch guideline
+   here would require either breaking the fixed-scale cabinet or moving the deck
+   to an unscaled overlay; both are larger design changes than this follow-up, so
+   the sub-44px on-screen sizes are accepted (see AIA-39). Sizes are kept above
+   the 24px WCAG 2.5.8 floor (RESET 68px cabinet -> ~24.8px on-screen). */
 .deck {
   display: flex;
   flex: 0 0 auto;
@@ -350,7 +357,7 @@ a { color: var(--gold); }
 .arc-btn.thrust { background: var(--gold); }
 .arc-btn.thrust.pressed, .arc-btn.thrust:active { transform: translateY(4px); }
 .arc-btn.reset {
-  width: 62px; height: 62px; background: #2b3444; color: var(--text);
+  width: 68px; height: 68px; background: #2b3444; color: var(--text);
   box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.5), 0 0 0 4px #1b2231;
 }
 .arc-btn.reset.pressed, .arc-btn.reset:active { transform: translateY(3px); }
