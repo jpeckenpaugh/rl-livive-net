@@ -18,6 +18,7 @@ let episode = 0;
 let totalReward = 0;
 let state = null;
 let action = 0;
+let appliedAction = 0;
 let controllerMode = null;
 let controllerRequest = 0;
 let policySession = null;
@@ -28,10 +29,42 @@ let autoResetRemaining = null;
 let lastFrameTime = 0;
 let stepAccumulator = 0;
 let resetRequested = false;
+const sensorHistory = [];
 const pressed = new Set();
 const multiSimulations = [];
 
 function status(message) { $("status").textContent = message; }
+function reportFaultEvent(message) {
+  const feedback = $("fault-feedback");
+  feedback.textContent = `LAST FAULT EVENT · ${message}`;
+  feedback.classList.add("fault-active");
+}
+function clearFaultEvent() {
+  const feedback = $("fault-feedback");
+  feedback.textContent = "LAST FAULT EVENT · NONE";
+  feedback.classList.remove("fault-active");
+}
+function staleSensorObservation(observation, simulationIndex) {
+  const chance = Number($("sensor-fault").value) / 100;
+  if (chance > 0 && Math.random() < chance) {
+    reportFaultEvent(`SIM ${simulationIndex + 1} · STALE SENSOR SAMPLE`);
+    return sensorHistory[simulationIndex] || observation;
+  }
+  return observation;
+}
+function applyThrusterFault(requestedAction, simulationIndex) {
+  const chance = Number($("thruster-fault").value) / 100;
+  if (chance === 0 || Math.random() >= chance) return requestedAction;
+  if (requestedAction !== 0) {
+    const names = ["COAST", "LEFT THRUSTER", "MAIN ENGINE", "RIGHT THRUSTER"];
+    reportFaultEvent(`SIM ${simulationIndex + 1} · ${names[requestedAction]} FAILED`);
+    return 0;
+  }
+  const misfireAction = 1 + Math.floor(Math.random() * 3);
+  const names = ["", "LEFT THRUSTER", "MAIN ENGINE", "RIGHT THRUSTER"];
+  reportFaultEvent(`SIM ${simulationIndex + 1} · UNCOMMANDED ${names[misfireAction]}`);
+  return misfireAction;
+}
 function overlay(message, error = false, loading = false) {
   const panel = $("overlay");
   panel.classList.remove("hidden", "error", "loading");
@@ -111,7 +144,7 @@ function drawScene(targetCanvas, targetCtx, scene, currentAction) {
   }
   targetCtx.restore();
 }
-function draw() { drawScene(canvas, ctx, state, action); }
+function draw() { drawScene(canvas, ctx, state, appliedAction); }
 
 function initializeMultiBoard() {
   const board = $("multi-board");
@@ -316,11 +349,14 @@ async function chooseController(mode) {
   if (episode === 0 && state && !running) await resetEpisode();
 }
 
-async function choosePolicyActions(observations) {
+async function choosePolicyActions(observations, simulationIndices = observations.map((_, index) => index)) {
   if (observations.length === 0) return [];
   const ort = globalThis.ort;
   const values = new Float32Array(observations.length * 8);
-  observations.forEach((observation, index) => values.set(observation, index * 8));
+  observations.forEach((observation, index) => {
+    const simulationIndex = simulationIndices[index];
+    values.set(staleSensorObservation(observation, simulationIndex), index * 8);
+  });
   const input = new ort.Tensor("float32", values, [observations.length, 8]);
   const result = await policySession.run({ observation: input });
   const logits = result.logits.data;
@@ -333,8 +369,8 @@ async function choosePolicyActions(observations) {
   }
   return actions;
 }
-async function choosePolicyAction(observation) {
-  return (await choosePolicyActions([observation]))[0];
+async function choosePolicyAction(observation, simulationIndex = 0) {
+  return (await choosePolicyActions([observation], [simulationIndex]))[0];
 }
 
 function readPythonJson(expression) {
@@ -351,6 +387,10 @@ async function resetEpisode() {
   autoResetRemaining = null;
   try {
     state = readPythonJson("reset_json()");
+    action = 0;
+    appliedAction = 0;
+    sensorHistory[0] = Array.from(state.observation);
+    clearFaultEvent();
     stepAccumulator = 0;
     totalReward = 0; episode++;
     $("episode").textContent = `EPISODE ${String(episode).padStart(2, "0")}`;
@@ -376,6 +416,7 @@ async function resetMultiEpisode() {
     for (let i = 0; i < multiSimulations.length; i++) {
       const simulation = multiSimulations[i];
       simulation.state = scenes[i];
+      sensorHistory[i] = Array.from(scenes[i].observation);
       simulation.reward = 0;
       simulation.action = 0;
       simulation.episode++;
@@ -384,6 +425,7 @@ async function resetMultiEpisode() {
       simulation.outcome = "FLYING";
     }
     stepAccumulator = 0;
+    clearFaultEvent();
     $("episode").textContent = "4 PARALLEL EPISODES";
     status("4 AI SIMULATIONS RUNNING");
     $("multi-error").hidden = true;
@@ -415,11 +457,12 @@ async function advanceMultiStep() {
   const activeSimulations = multiSimulations.filter((simulation) => !simulation.done);
   if (activeSimulations.length === 0) return;
 
-  const activeActions = await choosePolicyActions(activeSimulations.map((simulation) => simulation.state.observation));
+  const observations = activeSimulations.map((simulation) => simulation.state.observation);
+  const activeActions = await choosePolicyActions(observations, activeSimulations.map((simulation) => simulation.index));
   const actions = multiSimulations.map(() => 0);
   activeSimulations.forEach((simulation, index) => {
-    simulation.action = activeActions[index];
-    actions[simulation.index] = activeActions[index];
+    simulation.action = applyThrusterFault(activeActions[index], simulation.index);
+    actions[simulation.index] = simulation.action;
   });
   const activeMask = multiSimulations.map((simulation) => !simulation.done);
   pyodide.globals.set("_multi_step_payload", JSON.stringify({ actions, active: activeMask }));
@@ -433,6 +476,7 @@ async function advanceMultiStep() {
     const simulation = multiSimulations[i];
     const result = results[i];
     if (!result) continue;
+    sensorHistory[i] = Array.from(multiSimulations[i].state.observation);
     simulation.state = result.state;
     simulation.reward += result.reward;
     if (result.terminated || result.truncated) {
@@ -454,6 +498,7 @@ function resetSelectedMulti(indices) {
   for (const { index, state: nextState } of scenes) {
     const simulation = multiSimulations[index];
     simulation.state = nextState;
+    sensorHistory[index] = Array.from(nextState.observation);
     simulation.reward = 0;
     simulation.action = 0;
     simulation.episode++;
@@ -523,7 +568,10 @@ async function frame(now) {
         } else if (controllerMode === "policy") {
           action = await choosePolicyAction(state.observation);
         }
-        const result = readPythonJson(`step_json(${action})`);
+        const observationBeforeStep = Array.from(state.observation);
+        appliedAction = applyThrusterFault(action, 0);
+        const result = readPythonJson(`step_json(${appliedAction})`);
+        sensorHistory[0] = observationBeforeStep;
         state = result.state;
         totalReward += result.reward;
         if (result.terminated || result.truncated) {

@@ -56,6 +56,29 @@
           </label>
           <button id="reset" type="button" disabled>RESET <span>↻</span></button>
         </div>
+        <div class="fault-controls" role="group" aria-label="Flight hardware faults">
+          <label class="fault-control" for="sensor-fault">
+            <span>SENSOR FAULT</span>
+            <select id="sensor-fault" title="At each AI decision, this chance replaces its current observation with the previous physics-step observation. Telemetry remains truthful.">
+              <option value="0" selected>OFF</option>
+              <option value="5">5%</option>
+              <option value="10">10%</option>
+              <option value="25">25%</option>
+              <option value="50">50%</option>
+            </select>
+          </label>
+          <label class="fault-control" for="thruster-fault">
+            <span>THRUSTER FAULT</span>
+            <select id="thruster-fault" title="Each physics step, this chance drops a requested thruster action or fires a random thruster when none was requested. Applies to human and AI commands.">
+              <option value="0" selected>OFF</option>
+              <option value="5">5%</option>
+              <option value="10">10%</option>
+              <option value="25">25%</option>
+              <option value="50">50%</option>
+            </select>
+          </label>
+          <span id="fault-feedback" class="fault-feedback" aria-live="polite">LAST FAULT EVENT · NONE</span>
+        </div>
       </section>
       <footer><span>ENVIRONMENT ONLINE <b>·</b> ONNX POLICY</span><a href="./about.html">How this POC works <span aria-hidden="true">↗</span></a></footer>
     </main>

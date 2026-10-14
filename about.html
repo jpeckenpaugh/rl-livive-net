@@ -14,6 +14,7 @@
         <a class="wordmark" href="./" aria-label="rl.livive.net home"><span class="mark">RL</span><span>livive<span class="muted">.net</span></span></a>
         <nav class="topnav" aria-label="Main navigation">
           <span class="runtime"><i></i> THE EXPERIMENT</span>
+          <a href="https://github.com/jpeckenpaugh/rl-livive-net" target="_blank" rel="noreferrer">Source code <span aria-hidden="true">↗</span></a>
           <a href="./">Back to the lander <span aria-hidden="true">↗</span></a>
         </nav>
       </header>
@@ -33,18 +34,18 @@
         <article class="about-card">
           <p class="eyebrow">01 / FLIGHT MODES</p>
           <h2>Choose how to explore.</h2>
-          <p><strong>Human Pilot</strong> gives you direct control. <strong>AI Pilot</strong> lets the trained policy choose every action. <strong>Autopilot with Manual Override</strong> lets the AI fly until you intervene. <strong>4 AI Simulations</strong> runs four independent policy-controlled flights, each with its own reward and outcome.</p>
+          <p><strong>Human Pilot</strong> gives you direct control. <strong>AI Pilot</strong> lets the trained policy choose every action. <strong>Autopilot with Manual Override</strong> lets the AI fly until you intervene. <strong>4 AI Simulations</strong> runs four independent policy-controlled flights with separate rewards and outcomes.</p>
         </article>
         <article class="about-card">
           <p class="eyebrow">02 / THE POLICY</p>
           <h2>Eight values in. One action out.</h2>
-          <p>The PPO policy receives the lander’s eight-value observation and chooses among four actions: coast, rotate left, fire the main engine, or rotate right. The browser runs the exported ONNX model with ONNX Runtime Web.</p>
+          <p>The PPO policy normally receives the lander’s current eight-value observation and chooses among four actions: coast, rotate left, fire the main engine, or rotate right. With Sensor Fault enabled, an AI decision may receive the previous physics-step observation instead. Thruster Fault can drop a requested thrust action or fire a thruster when coast was requested; it applies to human and AI commands. Both browser-only fault settings default to OFF, and telemetry continues to show the true state.</p>
           <div class="action-key"><span>OBSERVATION</span><b>→</b><span>PPO / ONNX</span><b>→</b><span>ACTION</span></div>
         </article>
         <article class="about-card">
           <p class="eyebrow">03 / READING A FLIGHT</p>
           <h2>A flight is one sample.</h2>
-          <p>Watch the lander, episode reward, and outcome together. The course tutorial evaluates across ten deterministic episodes; this page shows one interactive flight or four independent AI flights using a different physics solver and landing-completion rule. Treat the rewards as separate observations, not a reproduction of the course result.</p>
+          <p>Watch the lander, episode reward, and outcome together. The course tutorial evaluates across ten deterministic episodes; this page shows one interactive flight or four independent AI flights using a different physics solver and landing-completion rule. Fault settings are browser experiments, not part of the trained checkpoint or course evaluation. Treat each reward as an observation, not a reproduction of the course result.</p>
         </article>
       </section>
 
@@ -59,6 +60,7 @@
 
       <section class="sources" aria-label="References">
         <p class="eyebrow">REFERENCES</p>
+        <a href="https://github.com/jpeckenpaugh/rl-livive-net" target="_blank" rel="noreferrer">Project source code <span aria-hidden="true">↗</span></a>
         <a href="https://gymnasium.farama.org/v0.28.1/environments/box2d/lunar_lander/" target="_blank" rel="noreferrer">LunarLander-v2 environment <span aria-hidden="true">↗</span></a>
         <a href="https://stable-baselines3.readthedocs.io/en/v2.0.0/modules/ppo.html" target="_blank" rel="noreferrer">Stable-Baselines3 PPO <span aria-hidden="true">↗</span></a>
         <a href="https://pyodide.org/en/0.23.0/usage/downloading-and-deploying.html" target="_blank" rel="noreferrer">Pyodide 0.23-series deployment <span aria-hidden="true">↗</span></a>

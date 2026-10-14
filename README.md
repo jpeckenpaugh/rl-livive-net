@@ -2,6 +2,12 @@
 
 The browser page is a playable environment POC with a selectable trained-policy controller. The terminal launcher remains available for local play and environment work.
 
+## Project links
+
+- [Live browser demo](https://rl.livive.net/)
+- [Published PPO model card](https://huggingface.co/seekdepth/ppo-LunarLander-v2)
+- [Hugging Face Deep RL Course: Unit 1 hands-on](https://huggingface.co/learn/deep-rl-course/en/unit1/hands-on)
+
 A small terminal-playable LunarLander environment using the upstream v0.26-era
 LunarLander constants/reward structure, PyPyBox2D for pure-Python physics, and
 pygame for the local window. It includes a deliberately small `gymnasium`
@@ -50,8 +56,9 @@ environment is [Gymnasium LunarLander-v2](https://github.com/Farama-Foundation/G
 
 ## Browser POC
 
-The static page runs the same Python environment in Pyodide 0.23.4. Start
-`./run.sh` and open `http://127.0.0.1:8000/`. NumPy and Micropip load from
+The static page runs the same Python environment in Pyodide 0.23.4. Run
+`bash install.sh`, then `bash run.sh`, and open `http://localhost:8787/`.
+NumPy and Micropip load from
 Pyodide's package repository. The browser installs a first-party wheel built
 from the Gym shim and environment source, plus the separately credited,
 architecture-independent PyPyBox2D wheel in `third_party/wheels/`. The
@@ -64,16 +71,27 @@ The browser uses JavaScript canvas rendering and does not require pygame.
 ### Trained policy
 
 The browser runs the Stable-Baselines3 policy as a small ONNX actor with
-ONNX Runtime Web 1.19.2's WASM CPU backend. The browser receives the same
-8-value observation as the environment and selects the maximum of the model's
-four action logits. PyTorch, Stable-Baselines3, and the ONNX exporter are only
-used locally when producing the model file.
+ONNX Runtime Web 1.19.2's WASM CPU backend. With fault settings off, the policy
+receives the current 8-value environment observation and selects the maximum of
+the model's four action logits. With Sensor Fault enabled, an AI decision may
+instead receive the previous physics-step observation. PyTorch,
+Stable-Baselines3, and the ONNX exporter are only used locally when producing
+the model file.
 
 The browser offers Human Pilot, AI Pilot, and Autopilot with Override. It also
 offers a 4 AI Simulations mode: four independent environments run policy actions
 concurrently, using a batched ONNX inference call and keeping separate rewards
 and episode outcomes. In override mode the AI controls the full action space by
 default; any held human arrow-key input takes control for that step.
+
+The browser-only Sensor Fault and Thruster Fault controls each default to OFF
+and offer 5%, 10%, 25%, and 50% settings. Sensor Fault substitutes the previous
+physics-step observation for the AI's current input at the selected chance per
+decision; telemetry continues to show the actual environment state. Thruster
+Fault applies at each physics step: a requested thrust action may be dropped,
+or an unrequested action may fire while the controller requested coast. This
+affects Human Pilot and AI commands. These fault settings do not change the
+trained model or the Python environment implementation.
 
 To reproduce the export on macOS, create a separate environment and run the
 exporter. If the Hugging Face checkpoint is still an LFS pointer in the
