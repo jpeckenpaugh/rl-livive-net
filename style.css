@@ -1096,6 +1096,7 @@ select:focus-visible, input:focus-visible, .cab-btn:focus-visible, .controller:f
   background: rgba(10, 11, 16, 0.7);
   border: 1px solid #2a3742;
 }
+.match-hud .match-pips:empty { display: none; }
 /* Per-lane HUD: pilot name + points over each playfield. */
 .lane-hud {
   position: absolute;
