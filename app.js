@@ -5,8 +5,12 @@ const STEP_INTERVAL_MS = 1000 / FPS;
 const MAX_CATCH_UP_STEPS = 4;
 const MAX_FRAME_ELAPSED_MS = 100;
 const AUTO_RESET_DELAY_SECONDS = 2;
+const ROUND_BREAK_SECONDS = 2.6;
+const TOURNAMENT_BASE_SEED = 20261014;
 const SCALE = 30;
 const VIEWPORT_HALF_H = 400 / SCALE / 2;
+const PANELS = 4;
+const SCREEN_NAMES = ["title", "play", "tournament", "options"];
 const $ = (id) => document.getElementById(id);
 const canvas = $("screen");
 const ctx = canvas.getContext("2d");
@@ -21,7 +25,7 @@ let appliedAction = 0;
 let controllerMode = null;
 let controllerRequest = 0;
 const MODEL_FALLBACK = [
-  { id: "ppo", label: "PPO (1st party)", url: "models/ppo-LunarLander-v2.onnx" },
+  { id: "ppo", label: "PPO (Author)", url: "models/ppo-LunarLander-v2.onnx" },
 ];
 let modelCatalog = [];
 let activeModelId = null;
@@ -36,20 +40,50 @@ let resetRequested = false;
 const sensorHistory = [];
 const pressed = new Set();
 const multiSimulations = [];
+let tournament = null;
 
-function status(message) { $("status").textContent = message; }
+function currentScreen() {
+  return SCREEN_NAMES.find((name) => !$(`screen-${name}`).hidden) || "title";
+}
+
+function showScreen(name) {
+  if (!SCREEN_NAMES.includes(name)) name = "title";
+  for (const candidate of SCREEN_NAMES) $(`screen-${candidate}`).hidden = candidate !== name;
+  if (name !== "play" && name !== "tournament") {
+    running = false;
+    stepAccumulator = 0;
+  }
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function status(message) {
+  const target = $("status");
+  if (target) target.textContent = message;
+  const boot = $("boot-status");
+  if (boot) boot.textContent = message;
+}
 function reportFaultEvent(message) {
   const feedback = $("fault-feedback");
+  if (!feedback) return;
   feedback.textContent = `LAST FAULT EVENT · ${message}`;
   feedback.classList.add("fault-active");
 }
 function clearFaultEvent() {
   const feedback = $("fault-feedback");
+  if (!feedback) return;
   feedback.textContent = "LAST FAULT EVENT · NONE";
   feedback.classList.remove("fault-active");
 }
+function sensorFaultChance() {
+  const select = $("sensor-fault");
+  return select ? Number(select.value) / 100 : 0;
+}
+function thrusterFaultChance() {
+  const select = $("thruster-fault");
+  return select ? Number(select.value) / 100 : 0;
+}
 function staleSensorObservation(observation, simulationIndex) {
-  const chance = Number($("sensor-fault").value) / 100;
+  const chance = sensorFaultChance();
   if (chance > 0 && Math.random() < chance) {
     reportFaultEvent(`SIM ${simulationIndex + 1} · STALE SENSOR SAMPLE`);
     return sensorHistory[simulationIndex] || observation;
@@ -57,7 +91,7 @@ function staleSensorObservation(observation, simulationIndex) {
   return observation;
 }
 function applyThrusterFault(requestedAction, simulationIndex) {
-  const chance = Number($("thruster-fault").value) / 100;
+  const chance = thrusterFaultChance();
   if (chance === 0 || Math.random() >= chance) return requestedAction;
   if (requestedAction !== 0) {
     const names = ["COAST", "LEFT THRUSTER", "MAIN ENGINE", "RIGHT THRUSTER"];
@@ -93,7 +127,6 @@ function drawScene(targetCanvas, targetCtx, scene, currentAction) {
   targetCtx.globalAlpha = 1;
   if (!scene) return;
 
-  // Draw the generated terrain from the same world coordinates used by physics.
   const terrain = scene.terrain;
   if (terrain.length) {
     targetCtx.beginPath();
@@ -135,7 +168,6 @@ function drawScene(targetCanvas, targetCtx, scene, currentAction) {
     for (let i = 1; i < points.length; i++) targetCtx.lineTo(...points[i]);
     targetCtx.closePath(); targetCtx.fill(); targetCtx.stroke();
   }
-  // Engine flame follows the current input state.
   const obs = scene.observation;
   const x = w / 2 + obs[0] * (w / 2), y = h - (obs[1] * (VIEWPORT_HALF_H) + 8.1) * SCALE;
   targetCtx.save(); targetCtx.translate(x, y); targetCtx.rotate(obs[4]);
@@ -150,28 +182,32 @@ function drawScene(targetCanvas, targetCtx, scene, currentAction) {
 }
 function draw() { drawScene(canvas, ctx, state, appliedAction); }
 
-function initializeMultiBoard() {
+/* ---------------------------------------------------------------- panels */
+function initializePanels() {
   const board = $("multi-board");
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < PANELS; i++) {
     const card = document.createElement("article");
     card.className = "multi-sim-card";
 
     const heading = document.createElement("div");
     heading.className = "multi-sim-heading";
     const title = document.createElement("strong");
-    const modelSelect = document.createElement("select");
-    modelSelect.className = "multi-sim-model";
-    modelSelect.setAttribute("aria-label", `AI model for simulation ${i + 1}`);
-    const statusText = document.createElement("span");
-    heading.append(title, modelSelect, statusText);
+    title.className = "model-name";
+    const place = document.createElement("span");
+    place.className = "placement";
+    heading.append(title, place);
 
     const simCanvas = document.createElement("canvas");
     simCanvas.width = 600;
     simCanvas.height = 400;
-    simCanvas.setAttribute("aria-label", `AI simulation ${i + 1}`);
+    simCanvas.setAttribute("aria-label", `Simulation ${i + 1}`);
 
     const reward = document.createElement("div");
     reward.className = "multi-sim-reward";
+    const statusText = document.createElement("span");
+    statusText.className = "sim-outcome";
+    reward.append(statusText);
+
     card.append(heading, simCanvas, reward);
     board.append(card);
     const simulation = {
@@ -181,60 +217,50 @@ function initializeMultiBoard() {
       reward: 0,
       episode: 0,
       done: false,
-      restartRemaining: null,
+      outcome: "FLYING",
+      placement: null,
       canvas: simCanvas,
       context: simCanvas.getContext("2d"),
       title,
+      place,
       statusText,
       rewardElement: reward,
-      modelSelect,
       modelId: activeModelId,
     };
-    modelSelect.addEventListener("change", () => {
-      simulation.modelId = modelSelect.value;
-      if (controllerMode === "multi" && pyodide && !busy && state) resetSelectedMulti([simulation.index]);
-    });
     multiSimulations.push(simulation);
   }
-  drawMulti();
+  drawPanels();
 }
 
-function drawMulti() {
+const PLACE_LABELS = ["1st", "2nd", "3rd", "4th"];
+function placeText(place) { return PLACE_LABELS[place - 1] || `#${place}`; }
+
+function drawPanels() {
+  const tournamentMode = controllerMode === "tournament" && tournament;
   for (const simulation of multiSimulations) {
     drawScene(simulation.canvas, simulation.context, simulation.state, simulation.action);
-    simulation.title.textContent = `SIM ${String(simulation.index + 1).padStart(2, "0")} · EPISODE ${String(simulation.episode).padStart(2, "0")}`;
-    simulation.statusText.textContent = simulation.done
-      ? `RESET IN ${Math.max(0, simulation.restartRemaining || 0).toFixed(1)}s`
-      : simulation.state ? "FLYING" : "READY";
-    simulation.rewardElement.textContent = `REWARD ${simulation.reward.toFixed(1)} pts`;
-    simulation.statusText.classList.toggle("complete", simulation.done);
+    if (tournamentMode) {
+      const st = tournament.stats[simulation.index];
+      simulation.title.textContent = modelLabel(simulation.modelId);
+      simulation.place.textContent = simulation.placement ? placeText(simulation.placement) : "";
+      simulation.place.className = `placement${simulation.placement === 1 ? " gold" : simulation.placement ? " ranked" : ""}`;
+      if (simulation.done) {
+        const outcome = simulation.outcome;
+        simulation.statusText.textContent = `${outcome} · ROUND ${simulation.reward.toFixed(1)} · TOTAL ${(st.reward + simulation.reward).toFixed(1)} pts`;
+      } else {
+        simulation.statusText.textContent = `FLYING · ROUND ${simulation.reward.toFixed(1)} · TOTAL ${(st.reward + simulation.reward).toFixed(1)} pts`;
+      }
+      simulation.statusText.classList.toggle("complete", simulation.done);
+    }
   }
 }
 
-function setDisplayMode(multi) {
-  $("screen-wrap").hidden = multi;
-  $("telemetry").hidden = multi;
-  $("controls-hint").hidden = multi;
-  $("multi-board").hidden = !multi;
-  $("reset").innerHTML = multi ? 'RESET ALL <span>↻</span>' : 'RESET <span>↻</span>';
-  if (!multi) $("multi-error").hidden = true;
-}
-
-function updateTelemetry() {
-  if (!state) return;
-  const obs = state.observation;
-  $("altitude").textContent = Math.max(0, obs[1] * 100).toFixed(1);
-  $("hspeed").textContent = obs[2].toFixed(2);
-  $("vspeed").textContent = obs[3].toFixed(2);
-  $("reward").textContent = totalReward.toFixed(1);
-}
-
+/* --------------------------------------------------------------- screens */
 function updateControllerButtons() {
   const choices = [
     ["human-controller", "human"],
     ["policy-controller", "policy"],
     ["override-controller", "override"],
-    ["multi-controller", "multi"],
   ];
   for (const [id, mode] of choices) {
     const button = $(id);
@@ -245,22 +271,16 @@ function updateControllerButtons() {
     stateLabel.textContent = selected ? "ACTIVE" : mode !== "human" && modelSessions.has(activeModelId) ? "READY" : "SELECT";
   }
   const help = $("controller-help");
-  help.hidden = controllerMode !== "override" && controllerMode !== "multi";
-  help.textContent = controllerMode === "multi"
-    ? "Four independent AI flights run together. Each simulation has its own episode and reward; reset restarts all four."
-    : "AI flies by default. Hold ←/→ to rotate or ↑ to fire the engine; release to return control to AI.";
+  help.hidden = controllerMode !== "override";
+  help.textContent = "AI flies by default. Hold ←/→ to rotate or ↑ to fire the engine; release to return control to AI.";
 }
 
 function controllerButton(mode) {
-  const ids = {
-    human: "human-controller",
-    policy: "policy-controller",
-    override: "override-controller",
-    multi: "multi-controller",
-  };
+  const ids = { human: "human-controller", policy: "policy-controller", override: "override-controller" };
   return $(ids[mode]);
 }
 
+/* ---------------------------------------------------------------- models */
 async function loadModelCatalog() {
   let manifest = null;
   try {
@@ -285,6 +305,10 @@ async function loadModelCatalog() {
 function modelEntry(modelId) {
   return modelCatalog.find((model) => model.id === modelId) || null;
 }
+function modelLabel(modelId) {
+  const entry = modelEntry(modelId);
+  return entry ? entry.label : modelId;
+}
 
 function populateModelSelectors() {
   if (modelCatalog.length === 0) return;
@@ -301,12 +325,12 @@ function populateModelSelectors() {
   }
   const singleField = $("model-select-field");
   if (singleField) singleField.hidden = modelCatalog.length < 2;
-  for (const simulation of multiSimulations) {
-    const chosen = modelCatalog[simulation.index % modelCatalog.length];
-    simulation.modelId = chosen.id;
-    simulation.modelSelect.replaceChildren(...options.map((option) => option.cloneNode(true)));
-    simulation.modelSelect.value = chosen.id;
-  }
+
+  const slots = [...document.querySelectorAll(".tourn-model")];
+  slots.forEach((select, index) => {
+    select.replaceChildren(...options.map((option) => option.cloneNode(true)));
+    select.value = modelCatalog[index % modelCatalog.length].id;
+  });
 }
 
 async function ensureModelSession(modelId) {
@@ -355,6 +379,37 @@ function loadOnnxRuntime() {
   return onnxRuntimeLoading;
 }
 
+async function chooseModelActions(modelId, observations, simulationIndices, applyFaults = true) {
+  if (observations.length === 0) return [];
+  const session = await ensureModelSession(modelId);
+  const ort = globalThis.ort;
+  const values = new Float32Array(observations.length * 8);
+  observations.forEach((observation, index) => {
+    const simulationIndex = simulationIndices[index];
+    const sample = applyFaults ? staleSensorObservation(observation, simulationIndex) : observation;
+    values.set(sample, index * 8);
+  });
+  const input = new ort.Tensor("float32", values, [observations.length, 8]);
+  const result = await session.run({ observation: input });
+  const logits = result.logits.data;
+  const actions = [];
+  for (let row = 0; row < observations.length; row++) {
+    let best = 0;
+    const offset = row * 4;
+    for (let i = 1; i < 4; i++) if (logits[offset + i] > logits[offset + best]) best = i;
+    actions.push(best);
+  }
+  return actions;
+}
+async function choosePolicyAction(observation, simulationIndex = 0) {
+  return (await chooseModelActions(activeModelId, [observation], [simulationIndex]))[0];
+}
+
+/* --------------------------------------------------------------- runner */
+function readPythonJson(expression) {
+  return JSON.parse(pyodide.runPython(expression));
+}
+
 async function chooseController(mode) {
   const request = ++controllerRequest;
   if (mode !== "human") {
@@ -384,10 +439,6 @@ async function chooseController(mode) {
   const previousMode = controllerMode;
   const wasAutoResetting = autoResetRemaining !== null;
   if (mode !== previousMode) autoResetRemaining = null;
-  if (mode === "multi" || previousMode === "multi") {
-    running = false;
-    stepAccumulator = 0;
-  }
   while (busy && request === controllerRequest) {
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
@@ -396,24 +447,8 @@ async function chooseController(mode) {
   pressed.clear();
   updateAction();
   updateControllerButtons();
-  setDisplayMode(mode === "multi");
-  if (mode === "multi") {
-    try {
-      const panelModels = [...new Set(multiSimulations.map((simulation) => simulation.modelId))];
-      await Promise.all(panelModels.map((modelId) => ensureModelSession(modelId)));
-    } catch (error) {
-      showError(error);
-      return;
-    }
-    if (pyodide && state) await resetMultiEpisode();
-    return;
-  }
-  if (previousMode === "multi") {
-    running = false;
-    stepAccumulator = 0;
-    if (pyodide && state) await resetEpisode();
-    return;
-  }
+  setDisplayMode(false);
+  if (previousMode === "tournament") tournament = null;
   if (wasAutoResetting && mode !== previousMode && pyodide && state) {
     await resetEpisode();
     return;
@@ -421,41 +456,31 @@ async function chooseController(mode) {
   if (episode === 0 && state && !running) await resetEpisode();
 }
 
-async function chooseModelActions(modelId, observations, simulationIndices) {
-  if (observations.length === 0) return [];
-  const session = await ensureModelSession(modelId);
-  const ort = globalThis.ort;
-  const values = new Float32Array(observations.length * 8);
-  observations.forEach((observation, index) => {
-    const simulationIndex = simulationIndices[index];
-    values.set(staleSensorObservation(observation, simulationIndex), index * 8);
-  });
-  const input = new ort.Tensor("float32", values, [observations.length, 8]);
-  const result = await session.run({ observation: input });
-  const logits = result.logits.data;
-  const actions = [];
-  for (let row = 0; row < observations.length; row++) {
-    let best = 0;
-    const offset = row * 4;
-    for (let i = 1; i < 4; i++) if (logits[offset + i] > logits[offset + best]) best = i;
-    actions.push(best);
-  }
-  return actions;
-}
-async function choosePolicyAction(observation, simulationIndex = 0) {
-  return (await chooseModelActions(activeModelId, [observation], [simulationIndex]))[0];
+function setDisplayMode(multi) {
+  $("screen-wrap").hidden = multi;
+  $("telemetry").hidden = multi;
+  $("controls-hint").hidden = multi;
+  $("multi-board").hidden = !multi;
+  $("reset").innerHTML = multi ? 'RESET ALL <span>↻</span>' : 'RESET <span>↻</span>';
+  if (!multi) $("multi-error").hidden = true;
 }
 
-function readPythonJson(expression) {
-  return JSON.parse(pyodide.runPython(expression));
+function updateTelemetry() {
+  if (!state) return;
+  const obs = state.observation;
+  $("altitude").textContent = Math.max(0, obs[1] * 100).toFixed(1);
+  $("hspeed").textContent = obs[2].toFixed(2);
+  $("vspeed").textContent = obs[3].toFixed(2);
+  $("reward").textContent = totalReward.toFixed(1);
 }
+
 async function resetEpisode() {
   if (!pyodide || busy) return;
   if (!controllerMode) {
     status("SELECT A PILOT TO START");
     return;
   }
-  if (controllerMode === "multi") return resetMultiEpisode();
+  if (controllerMode === "tournament") return;
   busy = true; running = false;
   autoResetRemaining = null;
   try {
@@ -480,56 +505,89 @@ function requestReset() {
   }
   resetEpisode();
 }
-async function resetMultiEpisode() {
-  if (!pyodide || busy) return;
+
+/* ------------------------------------------------------------ tournament */
+function newTournament(competitors, rounds) {
+  return {
+    competitors,
+    totalRounds: rounds,
+    round: 0,
+    running: false,
+    phase: "idle",
+    pause: 0,
+    stats: competitors.map((modelId) => ({
+      modelId, reward: 0, lands: 0, wins: 0, episodes: 0, placements: [],
+    })),
+  };
+}
+
+async function resetTournamentEnvs(seed) {
   busy = true;
-  running = false;
   try {
-    const scenes = readPythonJson("reset_many_json()");
+    const scenes = readPythonJson(`reset_many_seeded_json(${seed})`);
     for (let i = 0; i < multiSimulations.length; i++) {
       const simulation = multiSimulations[i];
       simulation.state = scenes[i];
       sensorHistory[i] = Array.from(scenes[i].observation);
       simulation.reward = 0;
       simulation.action = 0;
-      simulation.episode++;
       simulation.done = false;
-      simulation.restartRemaining = null;
       simulation.outcome = "FLYING";
+      simulation.placement = null;
     }
     stepAccumulator = 0;
     clearFaultEvent();
-    $("episode").textContent = "4 PARALLEL EPISODES";
-    status("4 AI SIMULATIONS RUNNING");
-    $("multi-error").hidden = true;
-    drawMulti();
-    hideOverlay();
-    $("reset").disabled = false;
-    running = true;
-  } catch (error) { showError(error); }
-  finally {
-    busy = false;
-    if (resetRequested) {
-      resetRequested = false;
-      resetEpisode();
-    }
-  }
+  } finally { busy = false; }
 }
-function showError(error) {
-  running = false; busy = false; status("RUNTIME ERROR");
-  const message = String(error?.message || error).split("\n").slice(-5).join(" ");
-  if (controllerMode === "multi") {
-    $("multi-error").textContent = message;
-    $("multi-error").hidden = false;
-  } else {
-    overlay(message, true);
-  }
-  console.error(error);
+
+async function startTournament() {
+  if (!pyodide) { status("RUNTIME STILL LOADING"); return; }
+  const slots = [...document.querySelectorAll(".tourn-model")];
+  const competitors = slots.map((select) => select.value);
+  const rounds = Number($("tournament-rounds").value) || 10;
+  tournament = newTournament(competitors, rounds);
+  controllerMode = "tournament";
+  for (let i = 0; i < multiSimulations.length; i++) multiSimulations[i].modelId = competitors[i];
+
+  status("LOADING TOURNAMENT PILOTS");
+  overlay("Loading tournament pilots…", false, true);
+  try {
+    await Promise.all(competitors.map((modelId) => ensureModelSession(modelId)));
+  } catch (error) { showError(error); return; }
+
+  $("tournament-setup").hidden = true;
+  $("tournament-results").hidden = true;
+  $("tournament-again").hidden = true;
+  $("tournament-status").hidden = false;
+  $("tournament-standings").hidden = false;
+  setDisplayMode(true);
+  populateStandings();
+  hideOverlay();
+  await beginTournamentRound();
 }
-async function advanceMultiStep() {
+
+async function beginTournamentRound() {
+  tournament.round += 1;
+  $("tourn-round-num").textContent = tournament.round;
+  $("tourn-rounds-total").textContent = tournament.totalRounds;
+  $("tourn-phase").textContent = `SEEDED #${TOURNAMENT_BASE_SEED + tournament.round} · IDENTICAL FOR ALL PILOTS`;
+  await resetTournamentEnvs(TOURNAMENT_BASE_SEED + tournament.round);
+  tournament.phase = "running";
+  tournament.pause = 0;
+  running = true;
+  stepAccumulator = 0;
+  status(`TOURNAMENT · ROUND ${tournament.round} OF ${tournament.totalRounds}`);
+  drawPanels();
+  populateStandings();
+}
+
+function tournamentRoundComplete() {
+  return multiSimulations.every((simulation) => simulation.done);
+}
+
+async function advanceTournamentStep() {
   const activeSimulations = multiSimulations.filter((simulation) => !simulation.done);
   if (activeSimulations.length === 0) return;
-
   const actions = multiSimulations.map(() => 0);
   const groups = new Map();
   for (const simulation of activeSimulations) {
@@ -539,10 +597,10 @@ async function advanceMultiStep() {
   }
   for (const [modelId, simulations] of groups) {
     const observations = simulations.map((simulation) => simulation.state.observation);
-    const chosen = await chooseModelActions(modelId, observations, simulations.map((simulation) => simulation.index));
+    const chosen = await chooseModelActions(modelId, observations, simulations.map((s) => s.index), false);
     simulations.forEach((simulation, index) => {
-      simulation.action = applyThrusterFault(chosen[index], simulation.index);
-      actions[simulation.index] = simulation.action;
+      simulation.action = chosen[index];
+      actions[simulation.index] = chosen[index];
     });
   }
   const activeMask = multiSimulations.map((simulation) => !simulation.done);
@@ -557,42 +615,156 @@ async function advanceMultiStep() {
     const simulation = multiSimulations[i];
     const result = results[i];
     if (!result) continue;
-    sensorHistory[i] = Array.from(multiSimulations[i].state.observation);
     simulation.state = result.state;
     simulation.reward += result.reward;
     if (result.terminated || result.truncated) {
       simulation.done = true;
-      simulation.outcome = result.truncated ? "TIME LIMIT" : "COMPLETE";
-      simulation.restartRemaining = AUTO_RESET_DELAY_SECONDS;
+      if (result.truncated) simulation.outcome = "TIME LIMIT";
+      else simulation.outcome = result.reward > 0 ? "LANDED" : "CRASHED";
     }
   }
 }
-function resetSelectedMulti(indices) {
-  if (indices.length === 0) return;
-  pyodide.globals.set("_multi_reset_indices", JSON.stringify(indices));
-  let scenes;
-  try {
-    scenes = readPythonJson("reset_multi_indices_json(_multi_reset_indices)");
-  } finally {
-    pyodide.globals.delete("_multi_reset_indices");
-  }
-  for (const { index, state: nextState } of scenes) {
-    const simulation = multiSimulations[index];
-    simulation.state = nextState;
-    sensorHistory[index] = Array.from(nextState.observation);
-    simulation.reward = 0;
-    simulation.action = 0;
-    simulation.episode++;
-    simulation.done = false;
-    simulation.restartRemaining = null;
-    simulation.outcome = "FLYING";
+
+function completeTournamentRound() {
+  const ranked = [...multiSimulations].sort((a, b) => b.reward - a.reward);
+  let lastReward = null;
+  let lastRank = 0;
+  ranked.forEach((simulation, index) => {
+    const rank = lastReward !== null && simulation.reward === lastReward ? lastRank : index + 1;
+    lastReward = simulation.reward;
+    lastRank = rank;
+    simulation.placement = rank;
+    const stats = tournament.stats[simulation.index];
+    stats.reward += simulation.reward;
+    stats.episodes += 1;
+    stats.placements.push(rank);
+    if (simulation.outcome === "LANDED") stats.lands += 1;
+    if (rank === 1) stats.wins += 1;
+  });
+  drawPanels();
+  populateStandings();
+  if (tournament.round >= tournament.totalRounds) {
+    tournament.phase = "done";
+    finishTournament();
+  } else {
+    tournament.phase = "roundComplete";
+    tournament.pause = ROUND_BREAK_SECONDS;
+    running = false;
+    status(`ROUND ${tournament.round} COMPLETE · NEXT ROUND SOON`);
   }
 }
+
+async function tournamentNextRound() {
+  if (!tournament || tournament.phase !== "roundComplete") return;
+  await beginTournamentRound();
+}
+
+function standingsRows() {
+  return tournament.stats.map((stats) => {
+    const medals = stats.placements.filter((place) => place <= 3).length;
+    return { ...stats, medals };
+  });
+}
+
+function populateStandings() {
+  if (!tournament) return;
+  const rows = standingsRows().slice().sort((a, b) => b.reward - a.reward || b.wins - a.wins || b.lands - a.lands);
+  $("tournament-standings").innerHTML = rows.map((stats, index) => `
+    <div class="stand-row">
+      <span class="stand-rank">${index + 1}</span>
+      <span class="stand-name">${escapeHtml(modelLabel(stats.modelId))}</span>
+      <span class="stand-stat"><b>${stats.reward.toFixed(0)}</b> pts</span>
+      <span class="stand-stat"><b>${stats.wins}</b> wins</span>
+      <span class="stand-stat"><b>${stats.lands}</b> lands</span>
+    </div>`).join("");
+}
+
+function finishTournament() {
+  running = false;
+  $("tournament-status").hidden = true;
+  const rows = standingsRows().slice().sort((a, b) => b.reward - a.reward || b.wins - a.wins || b.lands - a.lands);
+  const top = (key) => rows.slice().sort((a, b) => b[key] - a[key])[0];
+  const bestScore = top("reward");
+  const bestWins = top("wins");
+  const bestLands = top("lands");
+  const label = (entry) => escapeHtml(modelLabel(entry.modelId));
+  $("tournament-results").innerHTML = `
+    <h2 class="results-title">TOURNAMENT COMPLETE</h2>
+    <p class="results-sub">${tournament.totalRounds} seeded rounds · 4 pilots · identical episodes</p>
+    <div class="result-cards">
+      <div class="result-card"><span class="result-tag">HIGHEST SCORE</span><b>${label(bestScore)}</b><small>${bestScore.reward.toFixed(0)} pts cumulative</small></div>
+      <div class="result-card"><span class="result-tag">MOST WINS</span><b>${label(bestWins)}</b><small>${bestWins.wins} round wins</small></div>
+      <div class="result-card"><span class="result-tag">MOST LANDS</span><b>${label(bestLands)}</b><small>${bestLands.lands} successful landings</small></div>
+    </div>
+    <table class="results-table">
+      <thead><tr><th>#</th><th>Pilot</th><th>Total</th><th>Wins</th><th>Lands</th><th>Rounds (place)</th></tr></thead>
+      <tbody>${rows.map((stats, index) => `
+        <tr><td>${index + 1}</td><td>${label(stats)}</td><td>${stats.reward.toFixed(0)}</td><td>${stats.wins}</td><td>${stats.lands}</td>
+        <td class="place-cells">${stats.placements.map((place) => `<i class="p${place}">${place}</i>`).join("")}</td></tr>`).join("")}
+      </tbody>
+    </table>`;
+  $("tournament-results").hidden = false;
+  $("tournament-again").hidden = false;
+  status("TOURNAMENT COMPLETE");
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[char]));
+}
+
+/* --------------------------------------------------------------- errors */
+function showError(error) {
+  running = false; busy = false; status("RUNTIME ERROR");
+  const message = String(error?.message || error).split("\n").slice(-5).join(" ");
+  if (controllerMode === "tournament") {
+    $("multi-error").textContent = message;
+    $("multi-error").hidden = false;
+  } else {
+    overlay(message, true);
+  }
+  console.error(error);
+}
+
+/* ---------------------------------------------------------------- frame */
 async function frame(now) {
   requestAnimationFrame(frame);
   const elapsed = lastFrameTime === 0 ? 0 : Math.min(now - lastFrameTime, MAX_FRAME_ELAPSED_MS);
   lastFrameTime = now;
   const scaledElapsedSeconds = elapsed * simulationSpeed / 1000;
+
+  if (controllerMode === "tournament" && tournament) {
+    if (tournament.phase === "roundComplete") {
+      tournament.pause -= scaledElapsedSeconds;
+      if (tournament.pause <= 0) {
+        try { await tournamentNextRound(); } catch (error) { showError(error); }
+      }
+      return;
+    }
+    if (!running) { stepAccumulator = 0; return; }
+    stepAccumulator = Math.min(
+      stepAccumulator + elapsed * simulationSpeed,
+      STEP_INTERVAL_MS * MAX_CATCH_UP_STEPS,
+    );
+    if (busy) return;
+    if (stepAccumulator < STEP_INTERVAL_MS) return;
+    busy = true;
+    try {
+      let stepsRun = 0;
+      while (stepsRun < MAX_CATCH_UP_STEPS && running && stepAccumulator >= STEP_INTERVAL_MS) {
+        await advanceTournamentStep();
+        stepAccumulator = Math.max(0, stepAccumulator - STEP_INTERVAL_MS);
+        stepsRun++;
+        if (tournamentRoundComplete()) break;
+      }
+      drawPanels();
+      if (tournamentRoundComplete()) completeTournamentRound();
+    } catch (error) { showError(error); }
+    finally { busy = false; }
+    return;
+  }
+
   if (controllerMode === "policy" && autoResetRemaining !== null) {
     autoResetRemaining -= scaledElapsedSeconds;
     if (autoResetRemaining <= 0) {
@@ -603,26 +775,6 @@ async function frame(now) {
     const seconds = autoResetRemaining.toFixed(1);
     status(`NEXT AI FLIGHT IN ${seconds}s`);
     $("message").textContent = `Episode ended · ${totalReward.toFixed(1)} points · next flight in ${seconds}s`;
-  }
-  const multiResetIndices = [];
-  if (controllerMode === "multi") {
-    for (const simulation of multiSimulations) {
-      if (!simulation.done || simulation.restartRemaining === null) continue;
-      simulation.restartRemaining -= scaledElapsedSeconds;
-      if (simulation.restartRemaining <= 0) multiResetIndices.push(simulation.index);
-    }
-    if (multiResetIndices.length > 0 && !busy) {
-      busy = true;
-      try {
-        resetSelectedMulti(multiResetIndices);
-        drawMulti();
-        if (multiSimulations.some((simulation) => simulation.done)) status("FLIGHTS COMPLETE · RESETTING EACH IN TURN");
-        else status("4 AI SIMULATIONS RUNNING");
-      } catch (error) { showError(error); }
-      finally { busy = false; }
-      stepAccumulator = 0;
-      return;
-    }
   }
   if (!running) {
     stepAccumulator = 0;
@@ -639,35 +791,27 @@ async function frame(now) {
   try {
     let stepsRun = 0;
     while (stepsRun < MAX_CATCH_UP_STEPS && running && stepAccumulator >= STEP_INTERVAL_MS) {
-      if (controllerMode === "multi") {
-        await advanceMultiStep();
-      } else {
-        if (controllerMode === "override") {
-          const aiAction = await choosePolicyAction(state.observation);
-          const humanAction = humanOverrideAction();
-          action = humanAction === null ? aiAction : humanAction;
-        } else if (controllerMode === "policy") {
-          action = await choosePolicyAction(state.observation);
-        }
-        const observationBeforeStep = Array.from(state.observation);
-        appliedAction = applyThrusterFault(action, 0);
-        const result = readPythonJson(`step_json(${appliedAction})`);
-        sensorHistory[0] = observationBeforeStep;
-        state = result.state;
-        totalReward += result.reward;
-        if (result.terminated || result.truncated) {
-          running = false;
-          terminalResult = result;
-        }
+      if (controllerMode === "override") {
+        const aiAction = await choosePolicyAction(state.observation);
+        const humanAction = humanOverrideAction();
+        action = humanAction === null ? aiAction : humanAction;
+      } else if (controllerMode === "policy") {
+        action = await choosePolicyAction(state.observation);
+      }
+      const observationBeforeStep = Array.from(state.observation);
+      appliedAction = applyThrusterFault(action, 0);
+      const result = readPythonJson(`step_json(${appliedAction})`);
+      sensorHistory[0] = observationBeforeStep;
+      state = result.state;
+      totalReward += result.reward;
+      if (result.terminated || result.truncated) {
+        running = false;
+        terminalResult = result;
       }
       stepAccumulator = Math.max(0, stepAccumulator - STEP_INTERVAL_MS);
       stepsRun++;
     }
-    if (controllerMode === "multi") {
-      drawMulti();
-    } else {
-      updateTelemetry(); draw();
-    }
+    updateTelemetry(); draw();
     if (terminalResult) {
       stepAccumulator = 0;
       if (controllerMode === "policy") {
@@ -689,6 +833,8 @@ async function frame(now) {
     }
   }
 }
+
+/* ----------------------------------------------------------------- input */
 function updateAction() {
   if (pressed.has("ArrowUp")) action = 2;
   else if (pressed.has("ArrowLeft")) action = 1;
@@ -716,11 +862,11 @@ window.addEventListener("keydown", (event) => {
 });
 window.addEventListener("keyup", (event) => { pressed.delete(event.code); updateAction(); });
 window.addEventListener("blur", () => { pressed.clear(); updateAction(); });
+
 $("reset").addEventListener("click", requestReset);
 $("human-controller").addEventListener("click", () => chooseController("human"));
 $("policy-controller").addEventListener("click", () => chooseController("policy"));
 $("override-controller").addEventListener("click", () => chooseController("override"));
-$("multi-controller").addEventListener("click", () => chooseController("multi"));
 $("model-select").addEventListener("change", (event) => {
   activeModelId = event.currentTarget.value;
   updateControllerButtons();
@@ -732,10 +878,27 @@ $("time-scale").addEventListener("change", (event) => {
   simulationSpeed = Number(event.currentTarget.value);
   stepAccumulator = 0;
 });
+$("home-link").addEventListener("click", (event) => { event.preventDefault(); showScreen("title"); });
+for (const button of document.querySelectorAll("[data-screen]")) {
+  button.addEventListener("click", () => showScreen(button.dataset.screen));
+}
+$("tournament-start").addEventListener("click", () => startTournament());
+$("tournament-again").addEventListener("click", () => {
+  $("tournament-results").hidden = true;
+  $("tournament-again").hidden = true;
+  $("tournament-status").hidden = true;
+  $("tournament-setup").hidden = false;
+  tournament = null;
+  controllerMode = null;
+  running = false;
+  populateStandings();
+});
 updateControllerButtons();
 
+/* ----------------------------------------------------------------- boot */
 async function start() {
   try {
+    showScreen("title");
     status("LOADING AI MODELS"); overlay("Discovering AI models…", false, true);
     await loadModelCatalog();
     populateModelSelectors();
@@ -777,18 +940,12 @@ def step_json(action):
     observation, reward, terminated, truncated, _ = env.step(int(action))
     return json.dumps({"state": scene_data(env, observation), "reward": reward,
                        "terminated": terminated, "truncated": truncated})
-def reset_many_json():
+def reset_many_seeded_json(seed):
     scenes = []
     for sim_env in multi_envs:
-        observation, _ = sim_env.reset()
+        observation, _ = sim_env.reset(seed=int(seed))
         scenes.append(scene_data(sim_env, observation))
     return json.dumps(scenes)
-def reset_multi_indices_json(indices_json):
-    results = []
-    for index in json.loads(indices_json):
-        observation, _ = multi_envs[index].reset()
-        results.append({"index": index, "state": scene_data(multi_envs[index], observation)})
-    return json.dumps(results)
 def step_many_json(payload_json):
     payload = json.loads(payload_json)
     actions = payload["actions"]
@@ -812,11 +969,11 @@ async function prepareEnvironment() {
     state = readPythonJson("reset_json()");
     totalReward = 0;
     updateTelemetry(); draw(); hideOverlay();
-    status("SELECT A PILOT TO START");
+    status("READY · CHOOSE A MODE");
     $("human-controller").disabled = false;
     $("policy-controller").disabled = false;
     $("override-controller").disabled = false;
-    $("multi-controller").disabled = false;
+    $("tournament-start").disabled = false;
     $("reset").disabled = true;
   } catch (error) { showError(error); }
   finally {
@@ -835,5 +992,5 @@ async function installWheel(url) {
     pyodide.globals.delete("_wheel_url");
   }
 }
-initializeMultiBoard();
+initializePanels();
 draw(); start();

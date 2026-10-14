@@ -11,46 +11,111 @@
   <body>
     <main class="shell">
       <header class="topbar">
-        <a class="wordmark" href="./" aria-label="rl.livive.net home"><span class="mark">RL</span><span>livive<span class="muted">.net</span></span></a>
+        <a class="wordmark" href="#" id="home-link" aria-label="Back to the menu"><span class="mark">RL</span><span>livive<span class="muted">.net</span></span></a>
         <nav class="topnav" aria-label="Main navigation">
           <span class="runtime"><i></i> LUNAR LANDER / POLICY LAB</span>
           <a href="https://huggingface.co/seekdepth/ppo-LunarLander-v2" target="_blank" rel="noreferrer">Model on Hugging Face <span aria-hidden="true">↗</span></a>
           <a href="./about.html">About</a>
         </nav>
       </header>
-      <section class="game" aria-label="Lunar Lander game">
-        <div class="game-head"><div><span class="live-dot"></span><span id="status">BOOTING PYTHON RUNTIME</span></div><span id="episode">EPISODE —</span></div>
-        <div class="controller-row">
-          <div class="controller-label"><span class="label">FLIGHT CONTROLLER</span><strong>Choose who flies</strong></div>
-          <div class="controller-options" role="group" aria-label="Flight controller">
-            <button id="human-controller" class="controller" type="button" title="You control the lander: ←/→ rotate, ↑ fire the main engine." aria-label="Human Pilot: you control the lander directly." aria-pressed="false" disabled><span class="controller-name">Human Pilot</span><span class="controller-state">SELECT</span></button>
-            <button id="override-controller" class="controller" type="button" title="The AI flies by default. Hold ←/→ to rotate or ↑ to fire the engine; release to return control to the AI." aria-label="Autopilot with Manual Override: AI flies by default, and held rotation or engine input overrides it." aria-pressed="false" disabled><span class="controller-name">Autopilot with Manual Override</span><span class="controller-state">SELECT</span></button>
-            <button id="policy-controller" class="controller" type="button" title="The ONNX-trained policy chooses every flight action." aria-label="AI Pilot: the trained policy controls every action." aria-pressed="false" disabled><span class="controller-name">AI Pilot</span><span id="policy-label" class="controller-state">SELECT</span></button>
-            <button id="multi-controller" class="controller" type="button" title="Run four independent AI episodes at once. Each flight has its own score and outcome." aria-label="Four AI simulations: run four independent AI episodes concurrently." aria-pressed="false" disabled><span class="controller-name">4 AI Simulations</span><span class="controller-state">SELECT</span></button>
+
+      <!-- ============================ TITLE ============================ -->
+      <section id="screen-title" class="screen title-screen" aria-label="Main menu">
+        <div class="title-hero">
+          <p class="eyebrow">RL POLICY LAB · UNIT 01</p>
+          <h1 class="title-word">LUNAR<em>LANDER</em></h1>
+          <p class="title-sub">Four trained pilots. One identical flight. Who sticks the landing?</p>
+          <p id="boot-status" class="boot-status"><span class="live-dot"></span>LOADING PYTHON RUNTIME</p>
+          <div class="title-menu">
+            <button class="menu-btn" data-screen="play" type="button"><b>PLAY</b><span>Fly it yourself, or hand the stick to the AI</span></button>
+            <button class="menu-btn menu-btn-primary" data-screen="tournament" type="button"><b>TOURNAMENT</b><span>4 models · 10 head-to-head rounds · live standings</span></button>
+            <button class="menu-btn" data-screen="options" type="button"><b>OPTIONS</b><span>Simulation speed and flight faults</span></button>
+            <a class="menu-btn" href="./about.html"><b>ABOUT</b><span>How this lab works</span></a>
           </div>
-          <p id="controller-help" class="controller-help" hidden></p>
         </div>
-        <div id="screen-wrap" class="screen-wrap">
-          <canvas id="screen" width="600" height="400" aria-label="Lunar lander simulation"></canvas>
-          <div id="overlay" class="overlay"><div class="loader"></div><p id="message">Loading Pyodide…</p></div>
+      </section>
+
+      <!-- ============================ PLAY ============================ -->
+      <section id="screen-play" class="screen" hidden aria-label="Flight deck">
+        <div class="screen-head"><button class="back-btn" data-screen="title" type="button">← MENU</button><span class="screen-kicker">FLIGHT DECK</span></div>
+        <section class="game" aria-label="Lunar Lander game">
+          <div class="game-head"><div><span class="live-dot"></span><span id="status">BOOTING PYTHON RUNTIME</span></div><span id="episode">EPISODE —</span></div>
+          <div class="controller-row">
+            <div class="controller-label"><span class="label">FLIGHT CONTROLLER</span><strong>Choose who flies</strong></div>
+            <div class="controller-options" role="group" aria-label="Flight controller">
+              <button id="human-controller" class="controller" type="button" title="You control the lander: ←/→ rotate, ↑ fire the main engine." aria-label="Human Pilot: you control the lander directly." aria-pressed="false" disabled><span class="controller-name">Human Pilot</span><span class="controller-state">SELECT</span></button>
+              <button id="override-controller" class="controller" type="button" title="The AI flies by default. Hold ←/→ to rotate or ↑ to fire the engine; release to return control to the AI." aria-label="Autopilot with Manual Override: AI flies by default, and held rotation or engine input overrides it." aria-pressed="false" disabled><span class="controller-name">Autopilot with Manual Override</span><span class="controller-state">SELECT</span></button>
+              <button id="policy-controller" class="controller" type="button" title="The ONNX-trained policy chooses every flight action." aria-label="AI Pilot: the trained policy controls every action." aria-pressed="false" disabled><span class="controller-name">AI Pilot</span><span id="policy-label" class="controller-state">SELECT</span></button>
+            </div>
+            <p id="controller-help" class="controller-help" hidden></p>
+          </div>
+          <div id="screen-wrap" class="screen-wrap">
+            <canvas id="screen" width="600" height="400" aria-label="Lunar lander simulation"></canvas>
+            <div id="overlay" class="overlay"><div class="loader"></div><p id="message">Loading Pyodide…</p></div>
+          </div>
+          <div id="telemetry" class="telemetry">
+            <div><span class="label">ALTITUDE</span><strong id="altitude">—</strong><small>m</small></div>
+            <div><span class="label">HORIZONTAL SPEED</span><strong id="hspeed">—</strong><small>m/s</small></div>
+            <div><span class="label">VERTICAL SPEED</span><strong id="vspeed">—</strong><small>m/s</small></div>
+            <div><span class="label">REWARD</span><strong id="reward">—</strong><small>pts</small></div>
+          </div>
+          <div class="controls-row">
+            <div id="controls-hint" class="hint"><kbd>←</kbd><kbd>→</kbd> rotate <span class="sep">/</span> <kbd>↑</kbd> main engine <span class="sep">/</span> <kbd>↓</kbd> reset</div>
+            <label class="model-select" id="model-select-field" for="model-select" hidden>
+              <span>AI MODEL</span>
+              <select id="model-select" title="Which trained policy flies in AI Pilot and Autopilot modes."></select>
+            </label>
+            <button id="reset" type="button" disabled>RESET <span>↻</span></button>
+          </div>
+        </section>
+      </section>
+
+      <!-- ========================= TOURNAMENT ========================= -->
+      <section id="screen-tournament" class="screen" hidden aria-label="Tournament">
+        <div class="screen-head"><button class="back-btn" data-screen="title" type="button">← MENU</button><span class="screen-kicker">TOURNAMENT</span></div>
+
+        <div id="tournament-setup" class="tournament-setup">
+          <div class="setup-card">
+            <p class="eyebrow">PICK YOUR FOUR PILOTS</p>
+            <p class="setup-sub">Every round flies the <b>same seeded episode</b> for all four. Points, lands, and round wins accumulate across the tournament.</p>
+            <div class="setup-grid">
+              <label class="slot"><span>PILOT 1</span><select class="tourn-model" data-slot="0"></select></label>
+              <label class="slot"><span>PILOT 2</span><select class="tourn-model" data-slot="1"></select></label>
+              <label class="slot"><span>PILOT 3</span><select class="tourn-model" data-slot="2"></select></label>
+              <label class="slot"><span>PILOT 4</span><select class="tourn-model" data-slot="3"></select></label>
+            </div>
+            <div class="setup-actions">
+              <label class="time-scale" for="tournament-rounds"><span>ROUNDS</span>
+                <select id="tournament-rounds">
+                  <option value="5">5 rounds</option>
+                  <option value="10" selected>10 rounds</option>
+                  <option value="20">20 rounds</option>
+                </select>
+              </label>
+              <button id="tournament-start" class="start-btn" type="button">START TOURNAMENT</button>
+            </div>
+          </div>
         </div>
-        <div id="multi-error" class="multi-error" hidden></div>
-        <div id="multi-board" class="multi-board" hidden aria-label="Four independent AI simulations"></div>
-        <div id="telemetry" class="telemetry">
-          <div><span class="label">ALTITUDE</span><strong id="altitude">—</strong><small>m</small></div>
-          <div><span class="label">HORIZONTAL SPEED</span><strong id="hspeed">—</strong><small>m/s</small></div>
-          <div><span class="label">VERTICAL SPEED</span><strong id="vspeed">—</strong><small>m/s</small></div>
-          <div><span class="label">REWARD</span><strong id="reward">—</strong><small>pts</small></div>
+
+        <div id="tournament-status" class="tournament-status" hidden>
+          <div class="tourn-head"><span>ROUND <b id="tourn-round-num">1</b> / <span id="tourn-rounds-total">10</span></span><span id="tourn-phase" class="tourn-phase">SEEDED · IDENTICAL FOR ALL PILOTS</span></div>
+          <div id="tournament-standings" class="standings"></div>
+          <div id="multi-board" class="multi-board" aria-label="Four models racing"></div>
+          <div id="multi-error" class="multi-error" hidden></div>
         </div>
-        <div class="controls-row">
-          <div id="controls-hint" class="hint"><kbd>←</kbd><kbd>→</kbd> rotate <span class="sep">/</span> <kbd>↑</kbd> main engine <span class="sep">/</span> <kbd>↓</kbd> reset</div>
-          <label class="model-select" id="model-select-field" for="model-select" hidden>
-            <span>AI MODEL</span>
-            <select id="model-select" title="Which trained policy flies in AI Pilot and Autopilot modes. In 4 AI Simulations each panel picks its own model."></select>
-          </label>
+
+        <div id="tournament-results" class="results" hidden></div>
+        <div class="results-actions"><button id="tournament-again" class="back-btn" type="button" hidden>RUN AGAIN</button></div>
+      </section>
+
+      <!-- =========================== OPTIONS =========================== -->
+      <section id="screen-options" class="screen" hidden aria-label="Options">
+        <div class="screen-head"><button class="back-btn" data-screen="title" type="button">← MENU</button><span class="screen-kicker">OPTIONS</span></div>
+        <div class="options-card">
+          <p class="eyebrow">SIMULATION</p>
           <label class="time-scale" for="time-scale">
             <span>TIME SCALE</span>
-            <select id="time-scale" title="Simulation speed relative to default. 0.25× runs four times slower; 4× runs four times faster. AI inference and browser performance can limit the achieved speed.">
+            <select id="time-scale" title="Simulation speed relative to default. 0.25× runs four times slower; 4× runs four times faster.">
               <option value="0.25">0.25× speed · 4× slower</option>
               <option value="0.5">0.5× speed · 2× slower</option>
               <option value="1" selected>1× speed · default</option>
@@ -58,32 +123,34 @@
               <option value="4">4× speed</option>
             </select>
           </label>
-          <button id="reset" type="button" disabled>RESET <span>↻</span></button>
-        </div>
-        <div class="fault-controls" role="group" aria-label="Flight hardware faults">
-          <label class="fault-control" for="sensor-fault">
-            <span>SENSOR FAULT</span>
-            <select id="sensor-fault" title="At each AI decision, this chance replaces its current observation with the previous physics-step observation. Telemetry remains truthful.">
-              <option value="0" selected>OFF</option>
-              <option value="5">5%</option>
-              <option value="10">10%</option>
-              <option value="25">25%</option>
-              <option value="50">50%</option>
-            </select>
-          </label>
-          <label class="fault-control" for="thruster-fault">
-            <span>THRUSTER FAULT</span>
-            <select id="thruster-fault" title="Each physics step, this chance drops a requested thruster action or fires a random thruster when none was requested. Applies to human and AI commands.">
-              <option value="0" selected>OFF</option>
-              <option value="5">5%</option>
-              <option value="10">10%</option>
-              <option value="25">25%</option>
-              <option value="50">50%</option>
-            </select>
-          </label>
-          <span id="fault-feedback" class="fault-feedback" aria-live="polite">LAST FAULT EVENT · NONE</span>
+
+          <p class="eyebrow options-gap">FLIGHT FAULTS <small>· applied in PLAY and TOURNAMENT except where noted</small></p>
+          <div class="fault-controls" role="group" aria-label="Flight hardware faults">
+            <label class="fault-control" for="sensor-fault">
+              <span>SENSOR FAULT</span>
+              <select id="sensor-fault" title="At each AI decision, this chance replaces its current observation with the previous physics-step observation. Off during Tournament.">
+                <option value="0" selected>OFF</option>
+                <option value="5">5%</option>
+                <option value="10">10%</option>
+                <option value="25">25%</option>
+                <option value="50">50%</option>
+              </select>
+            </label>
+            <label class="fault-control" for="thruster-fault">
+              <span>THRUSTER FAULT</span>
+              <select id="thruster-fault" title="Each physics step, this chance drops a requested thruster action or fires a random thruster when none was requested. Off during Tournament.">
+                <option value="0" selected>OFF</option>
+                <option value="5">5%</option>
+                <option value="10">10%</option>
+                <option value="25">25%</option>
+                <option value="50">50%</option>
+              </select>
+            </label>
+            <span id="fault-feedback" class="fault-feedback" aria-live="polite">LAST FAULT EVENT · NONE</span>
+          </div>
         </div>
       </section>
+
       <footer><span>ENVIRONMENT ONLINE <b>·</b> ONNX POLICY</span><a href="./about.html">How this POC works <span aria-hidden="true">↗</span></a></footer>
     </main>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>

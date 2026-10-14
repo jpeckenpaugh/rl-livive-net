@@ -70,3 +70,97 @@ footer{align-items:center;gap:18px}footer b{color:var(--lime);font-weight:400}fo
 .multi-sim-model:focus-visible{outline:1px solid var(--lime);outline-offset:2px}
 .multi-sim-model option{background:#202a34;color:#dce4e9}
 @media(max-width:560px){.model-select{order:4;flex:1 0 100%}.model-select select{width:100%}}
+
+/* ============================================================= */
+/* Game shell: screens, title menu, tournament, options          */
+/* ============================================================= */
+.screen[hidden]{display:none}
+.screen-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 2px 14px;border-bottom:1px solid var(--line);margin-bottom:18px}
+.screen-kicker{font:10px 'DM Mono',monospace;letter-spacing:.16em;color:var(--lime)}
+.back-btn{background:transparent;border:1px solid #3e4b56;color:#cbd5dd;padding:7px 11px;border-radius:3px;font:9px 'DM Mono',monospace;letter-spacing:.08em;cursor:pointer}
+.back-btn:hover{border-color:var(--lime);color:var(--lime)}
+
+/* Title screen */
+.title-screen{padding:34px 0 20px}
+.title-hero{text-align:center;position:relative;padding:60px 20px 54px;border:1px solid #2c3947;border-radius:6px;background:radial-gradient(circle at 18% 20%,#1d2b34 0%,transparent 42%),radial-gradient(circle at 82% 78%,#1f2a22 0%,transparent 45%),linear-gradient(160deg,#141c25,#0f151d);overflow:hidden}
+.title-hero::before{content:"";position:absolute;inset:0;background-image:radial-gradient(#ffffff22 1px,transparent 1px);background-size:34px 34px;opacity:.5;pointer-events:none}
+.title-word{position:relative;font:700 clamp(52px,11vw,104px)/.92 'Space Grotesk',sans-serif;letter-spacing:-4px;margin:14px 0 0}
+.title-word em{display:block;color:var(--lime);font-style:normal}
+.title-sub{position:relative;color:#9ba8b5;font-size:14px;margin:18px auto 0;max-width:480px;line-height:1.55}
+.boot-status{position:relative;display:inline-flex;align-items:center;gap:8px;margin:16px 0 0;color:#8794a1;font:10px 'DM Mono',monospace;letter-spacing:.1em}
+.title-menu{position:relative;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;max-width:620px;margin:34px auto 0;text-align:left}
+.menu-btn{display:grid;gap:5px;text-align:left;text-decoration:none;padding:16px 18px;border:1px solid #34414d;border-radius:5px;background:#161e28;color:#e7edf0;cursor:pointer;transition:border-color .15s,transform .15s,background .15s}
+.menu-btn:hover{border-color:var(--lime);transform:translateY(-2px);background:#18211b}
+.menu-btn b{font:600 15px 'Space Grotesk',sans-serif;letter-spacing:.02em}
+.menu-btn span{font-size:11px;color:#94a1ad;line-height:1.4}
+.menu-btn-primary{border-color:#72864e;background:linear-gradient(120deg,#1d2a24,#18211b)}
+.menu-btn-primary b{color:var(--lime)}
+@media(max-width:600px){.title-menu{grid-template-columns:1fr}.title-hero{padding:40px 16px 34px}}
+
+/* Play screen: three controllers */
+.controller-options{grid-template-columns:repeat(3,minmax(0,1fr))}
+
+/* Tournament setup */
+.tournament-setup{padding:4px 0}
+.setup-card{border:1px solid #2c3947;border-radius:6px;padding:24px;background:linear-gradient(150deg,#18212b,#131a23)}
+.setup-card .eyebrow{margin:0 0 8px}
+.setup-sub{color:#9ba8b5;font-size:13px;line-height:1.55;margin:0 0 20px;max-width:560px}
+.setup-sub b{color:#dce4e9}
+.setup-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.slot{display:grid;gap:6px;font:9px 'DM Mono',monospace;letter-spacing:.1em;color:#788692}
+.slot select{border:1px solid #3e4b56;border-radius:3px;background:#202a34;color:#dce4e9;padding:9px;font:10px 'DM Mono',monospace;letter-spacing:0}
+.slot select:focus-visible{outline:1px solid var(--lime);outline-offset:2px}
+.setup-actions{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-top:20px;flex-wrap:wrap}
+.start-btn{border:1px solid #72864e;background:#202b27;color:var(--lime);padding:12px 22px;border-radius:4px;font:600 12px 'Space Grotesk',sans-serif;letter-spacing:.1em;cursor:pointer}
+.start-btn:hover{background:#26332b}
+.start-btn:disabled{opacity:.5;cursor:default}
+@media(max-width:600px){.setup-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Tournament live */
+.tournament-status{padding:0 0 6px}
+.tourn-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 2px;color:#cbd5dd;font:11px 'DM Mono',monospace;letter-spacing:.1em}
+.tourn-head b{color:var(--lime);font-size:16px}
+.tourn-phase{color:#7f8c97;font-size:9px;text-align:right}
+.standings{display:grid;gap:6px;margin:0 0 14px}
+.stand-row{display:grid;grid-template-columns:26px 1fr repeat(3,minmax(0,92px));align-items:center;gap:10px;padding:10px 14px;border:1px solid #26313d;border-radius:4px;background:#141c25;font:10px 'DM Mono',monospace;color:#aebac3}
+.stand-rank{color:var(--lime);font-size:13px}
+.stand-name{color:#e7edf0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stand-stat{color:#8794a1;text-align:right}
+.stand-stat b{color:#e7edf0;font-size:12px}
+@media(max-width:600px){.stand-row{grid-template-columns:22px 1fr repeat(3,minmax(0,60px));gap:6px;padding:8px 10px;font-size:9px}.stand-stat b{font-size:11px}}
+
+.multi-sim-heading .model-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e7edf0}
+.placement{flex:none;font-size:9px;padding:2px 6px;border-radius:2px;color:#8794a1}
+.placement.gold{color:#10151d;background:var(--lime)}
+.placement.ranked{color:#c7f36b;border:1px solid #3d5a3a}
+.multi-sim-reward .sim-outcome{color:#aebac3}
+.multi-sim-reward .sim-outcome.complete{color:var(--lime)}
+
+/* Tournament results */
+.results{margin-top:18px;padding:24px;border:1px solid #2c3947;border-radius:6px;background:linear-gradient(150deg,#18212b,#131a23)}
+.results-title{font:600 26px 'Space Grotesk',sans-serif;letter-spacing:-.6px;margin:0}
+.results-sub{color:#9ba8b5;font-size:12px;margin:7px 0 20px}
+.result-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:22px}
+.result-card{display:grid;gap:6px;padding:16px;border:1px solid #3a4935;border-radius:5px;background:#161f1a}
+.result-tag{font:9px 'DM Mono',monospace;letter-spacing:.12em;color:var(--lime)}
+.result-card b{font:600 17px 'Space Grotesk',sans-serif;color:#e7edf0}
+.result-card small{color:#9ba8b5;font-size:11px}
+.results-table{width:100%;border-collapse:collapse;font:11px 'DM Mono',monospace}
+.results-table th{text-align:left;color:#788692;font-weight:400;letter-spacing:.08em;padding:8px 6px;border-bottom:1px solid var(--line)}
+.results-table td{padding:9px 6px;border-bottom:1px solid #1d2733;color:#cbd5dd}
+.results-table tr:first-child td{color:#eef4ee}
+.place-cells{white-space:nowrap}
+.place-cells i{display:inline-grid;place-items:center;width:16px;height:16px;margin-right:3px;border-radius:2px;font-style:normal;font-size:9px;background:#202a34;color:#8794a1}
+.place-cells i.p1{background:var(--lime);color:#10151d}
+.place-cells i.p2{background:#3a4a56;color:#e7edf0}
+.place-cells i.p3{background:#2c3742;color:#cbd5dd}
+.results-actions{display:flex;justify-content:center;padding:18px 0 4px}
+@media(max-width:600px){.result-cards{grid-template-columns:1fr}.results{padding:18px}.place-cells i{width:14px;height:14px}}
+
+/* Options */
+.options-card{border:1px solid #2c3947;border-radius:6px;padding:24px;background:linear-gradient(150deg,#18212b,#131a23);display:grid;gap:16px}
+.options-card .eyebrow{margin:0}
+.options-gap{margin-top:10px}
+.options-gap small{color:#6f7c88;letter-spacing:0;text-transform:none;font-size:9px}
+.options-card .fault-controls{padding:0}
+@media(max-width:600px){.options-card{padding:18px}}

@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 LABELS = {
-    "ppo": "PPO (1st party, Stable-Baselines3)",
+    "ppo": "PPO (Author)",
     "miftakhov": "Miftakhov Dueling DDQN",
     "sanket": "Sanket DQN",
     "khordoo": "khordoo n-step DQN",
