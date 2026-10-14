@@ -747,13 +747,13 @@ const Commentary = createCommentary({
 });
 
 /* ---------------------------------------------------------------- screens */
-const SCREEN_NAMES = ["boot", "attract", "menu", "solo", "mode", "players", "mods", "roundintro", "match", "win", "lose", "cup", "about"];
+const SCREEN_NAMES = ["boot", "attract", "menu", "solomode", "pilotselect", "solo", "mode", "players", "mods", "roundintro", "match", "win", "lose", "cup", "about"];
 // Screen -> song. Menu sub-screens share one theme; every other screen has its
 // own. showScreen() is the single place that applies this map.
 const SCREEN_TRACKS = {
   boot: "boot",
   attract: "attract",
-  menu: "menu", mode: "menu", players: "menu", mods: "menu", about: "menu",
+  menu: "menu", solomode: "menu", pilotselect: "menu", mode: "menu", players: "menu", mods: "menu", about: "menu",
   solo: "solo",
   roundintro: "roundintro",
   match: "match",
@@ -764,8 +764,14 @@ const SCREEN_TRACKS = {
 // The title, start menu, and multi-player sub-menu all share one layout: the
 // live demo background stays up and only the foreground panel swaps. They are
 // therefore panels inside #screen-attract, not separate cabinet screens.
-const TITLE_SCREENS = new Set(["attract", "menu", "mode"]);
-const TITLE_PANELS = { attract: "title-panel-attract", menu: "title-panel-menu", mode: "title-panel-mode" };
+const TITLE_SCREENS = new Set(["attract", "menu", "solomode", "pilotselect", "mode"]);
+const TITLE_PANELS = {
+  attract: "title-panel-attract",
+  menu: "title-panel-menu",
+  solomode: "title-panel-solo",
+  pilotselect: "title-panel-pilot",
+  mode: "title-panel-mode",
+};
 function isTitleScreen(name) { return TITLE_SCREENS.has(name); }
 let currentScreenName = "boot";
 function showScreen(name) {
@@ -787,6 +793,8 @@ function showScreen(name) {
   currentScreenName = name;
   Sound.setTrack(SCREEN_TRACKS[name] || name);
   if (name !== "match" && name !== "solo") stopRunning();
+  // Leaving Solo Flight halts its loop, so the power button is a real exit.
+  if (name !== "solo" && solo.running) { solo.running = false; solo.autoReset = null; }
   if (!["match", "attract", "win"].includes(name)) stopConfetti();
   showMatchBanner(false);
   resetMenuFocus();
@@ -1097,6 +1105,7 @@ const solo = {
   controllerMode: null, request: 0, episode: 0, totalReward: 0,
   prevObservation: null, stepIndex: 0, autoReset: null, speed: 1,
   accumulator: 0, resetRequested: false,
+  modelId: null, pendingMode: null,
 };
 const soloCanvas = $("solo-canvas");
 const soloCtx = soloCanvas ? soloCanvas.getContext("2d") : null;
@@ -1118,45 +1127,15 @@ function updateSoloTelemetry() {
   $("vspeed").textContent = obs[3].toFixed(2);
   $("reward").textContent = solo.totalReward.toFixed(1);
 }
-function updateSoloButtons() {
-  const choices = [["human-controller", "human"], ["policy-controller", "policy"], ["override-controller", "override"]];
-  for (const [id, mode] of choices) {
-    const btn = $(id); if (!btn) continue;
-    const selected = solo.controllerMode === mode;
-    btn.classList.toggle("active", selected);
-    btn.setAttribute("aria-pressed", String(selected));
-    const label = btn.querySelector(".controller-state");
-    if (label) label.textContent = selected ? "ACTIVE" : (mode !== "human" && modelSessions.has(modelSelectValue()) ? "READY" : "SELECT");
-  }
-  const help = $("controller-help");
-  if (help) {
-    help.hidden = solo.controllerMode !== "override";
-    help.textContent = "The AI flies. Hold ←/→ to steer or ↑ for the main engine — let go and it takes back the stick.";
-  }
+function soloModelId() { return solo.modelId || (catalog[0] && catalog[0].id) || null; }
+function soloModeLabel(mode = solo.controllerMode) {
+  if (mode === "human") return "HUMAN PILOT";
+  if (mode === "override") return `CO-PILOTING · ${modelLabel(soloModelId()) || "AI"}`;
+  if (mode === "policy") return `AI PILOT · ${modelLabel(soloModelId()) || "AI"}`;
+  return "SOLO FLIGHT";
 }
-function modelSelectValue() { const s = $("model-select"); return s ? s.value : null; }
-function updatePilotSource() {
-  const target = $("pilot-source"); if (!target) return;
-  const entry = modelEntry(modelSelectValue());
-  if (!entry || !entry.source) { target.hidden = true; target.replaceChildren(); return; }
-  target.hidden = false;
-  const label = document.createElement("span");
-  label.className = "pilot-source-label"; label.textContent = "PILOT SOURCE";
-  const link = document.createElement("a");
-  link.href = entry.source; link.target = "_blank"; link.rel = "noreferrer";
-  link.textContent = `↗ ${entry.label}`;
-  target.replaceChildren(label, link);
-}
-function populateSoloSelectors() {
-  if (!catalog.length) return;
-  const single = $("model-select");
-  if (single) {
-    single.replaceChildren(...catalog.map((m) => { const o = document.createElement("option"); o.value = m.id; o.textContent = m.label; return o; }));
-    single.value = catalog[0].id;
-  }
-  const field = $("model-select-field");
-  if (field) field.hidden = catalog.length < 2;
-  updatePilotSource();
+function updateSoloPilotChip() {
+  const chip = $("solo-pilot-chip"); if (chip) chip.textContent = soloModeLabel();
 }
 function humanSoloAction() {
   if (pressed.has("ArrowUp")) return 2;
@@ -1164,34 +1143,82 @@ function humanSoloAction() {
   if (pressed.has("ArrowRight")) return 3;
   return 0;
 }
+/* Build the Choose Your Pilot grid from the model catalog. The default PPO
+ * pilot carries a DEFAULT tag; every card shows its algorithm. */
+function renderPilotCards() {
+  const board = $("pilot-cards"); if (!board) return;
+  const defaultId = catalog[0] && catalog[0].id;
+  board.replaceChildren(...catalog.map((m) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "pilot-card";
+    card.dataset.model = m.id;
+    const name = document.createElement("span");
+    name.className = "pilot-card-name";
+    name.textContent = m.label;
+    const tags = document.createElement("span");
+    tags.className = "pilot-card-tags";
+    const algo = document.createElement("span");
+    algo.className = "pilot-tag";
+    algo.textContent = m.algorithm || m.role || "PILOT";
+    tags.append(algo);
+    if (m.id === defaultId || m.role === "default") {
+      const def = document.createElement("span");
+      def.className = "pilot-tag default";
+      def.textContent = "DEFAULT";
+      tags.append(def);
+    }
+    card.append(name, tags);
+    card.addEventListener("click", () => {
+      solo.modelId = m.id;
+      Sound.sfx("select");
+      enterSolo(solo.pendingMode || "policy");
+    });
+    return card;
+  }));
+}
+function populateSoloPilots() {
+  if (catalog.length && !solo.modelId) solo.modelId = catalog[0].id;
+  renderPilotCards();
+}
+/* Start Menu → SINGLE PLAYER lands on the solo mode menu. Human Pilot flies
+ * at once; the two AI modes ask which pilot first. */
+function openSoloMode(mode) {
+  if (mode === "human") { solo.modelId = null; enterSolo("human"); return; }
+  solo.pendingMode = mode;
+  renderPilotCards();
+  showScreen("pilotselect");
+}
+async function enterSolo(mode) {
+  solo.pendingMode = mode;
+  solo.controllerMode = null;
+  solo.episode = 0;
+  showScreen("solo");
+  updateSoloPilotChip();
+  soloStatus(mode === "human" ? "ROLLING OUT THE LANDER" : "LOADING PILOT");
+  soloOverlay(mode === "human" ? "ROLLING OUT THE LANDER…" : "LOADING PILOT…", false, true);
+  const ok = await chooseController(mode);
+  if (ok && solo.controllerMode === mode) await resetSoloEpisode();
+}
 async function chooseController(mode) {
   const request = ++solo.request;
   if (mode !== "human") {
-    const btn = { policy: $("policy-controller"), override: $("override-controller") }[mode];
-    const label = btn ? btn.querySelector(".controller-state") : null;
-    if (btn) btn.disabled = true;
-    if (label) label.textContent = "LOADING";
-    try { await ensureModelSession(modelSelectValue()); }
+    try { await ensureModelSession(soloModelId()); }
     catch (err) {
-      if (btn) btn.disabled = false;
-      if (label) label.textContent = "RETRY";
       soloStatus("THIS PILOT WON'T BOOT");
+      soloOverlay(String(err && err.message || err).split("\n").slice(-4).join(" "), true);
       console.error(err);
-      return;
+      return false;
     }
-    if (btn) btn.disabled = false;
-    if (request !== solo.request) { if (label) label.textContent = "READY"; return; }
+    if (request !== solo.request) return false;
   }
-  const previous = solo.controllerMode;
-  const wasAuto = solo.autoReset !== null;
-  if (mode !== previous) solo.autoReset = null;
   while (solo.busy && request === solo.request) await new Promise((r) => setTimeout(r, 0));
-  if (request !== solo.request) return;
+  if (request !== solo.request) return false;
   solo.controllerMode = mode;
+  solo.autoReset = null;
   pressed.clear();
-  updateSoloButtons();
-  if (wasAuto && mode !== previous && pyodide && solo.state) { await resetSoloEpisode(); return; }
-  if (solo.episode === 0 && solo.state && !solo.running) await resetSoloEpisode();
+  updateSoloPilotChip();
+  return true;
 }
 async function resetSoloEpisode() {
   if (!pyodide || solo.busy || !solo.controllerMode) return;
@@ -1236,9 +1263,9 @@ async function soloFrame(elapsedMs) {
     while (steps < MAX_CATCH_UP_STEPS && solo.running && solo.accumulator >= STEP_INTERVAL_MS) {
       let action = 0;
       if (solo.controllerMode === "human") action = humanSoloAction();
-      else if (solo.controllerMode === "policy") action = (await chooseModelActions(modelSelectValue(), [solo.prevObservation]))[0];
+      else if (solo.controllerMode === "policy") action = (await chooseModelActions(soloModelId(), [solo.prevObservation]))[0];
       else if (solo.controllerMode === "override") {
-        const ai = (await chooseModelActions(modelSelectValue(), [solo.prevObservation]))[0];
+        const ai = (await chooseModelActions(soloModelId(), [solo.prevObservation]))[0];
         const human = (pressed.has("ArrowLeft") ? 1 : pressed.has("ArrowRight") ? 3 : pressed.has("ArrowUp") ? 2 : null);
         action = human === null ? ai : human;
       }
@@ -1267,7 +1294,7 @@ async function soloFrame(elapsedMs) {
         soloOverlay(`Flight over · ${solo.totalReward.toFixed(1)} points · reset to fly again`);
       }
       const rb = $("solo-reset"); if (rb) rb.disabled = false;
-      const pilotName = solo.controllerMode === "human" ? "YOU" : (modelLabel(modelSelectValue()) || "AI");
+      const pilotName = solo.controllerMode === "human" ? "YOU" : (modelLabel(soloModelId()) || "AI");
       addLeaderboardEntry({
         name: pilotName,
         value: solo.totalReward,
@@ -2323,7 +2350,7 @@ async function boot() {
   showScreen("boot");
   setStatus("ROLLING OUT THE PILOTS");
   await loadCatalog();
-  populateSoloSelectors();
+  populateSoloPilots();
   await new Promise((r) => setTimeout(r, 1200));
   showScreen("attract");
   try {
@@ -2352,7 +2379,6 @@ async function boot() {
 function enableCabinet() {
   const start = $("start-game");
   if (start) { start.disabled = false; start.classList.add("ready"); }
-  ["human-controller", "policy-controller", "override-controller"].forEach((id) => { const el = $(id); if (el) el.disabled = false; });
 }
 
 /* ---- event wiring ---- */
@@ -2372,7 +2398,7 @@ function startMatchFromCabinet() {
  * Screens where the cabinet owns the arrow keys for menu navigation.
  * Gameplay screens (solo/match) keep their flight controls instead.
  */
-const MENU_SCREENS = new Set(["attract", "menu", "mode", "players", "mods", "cup", "lose", "about"]);
+const MENU_SCREENS = new Set(["attract", "menu", "solomode", "pilotselect", "mode", "players", "mods", "cup", "lose", "about"]);
 let menuIndex = 0;
 
 function focusableItems() {
@@ -2565,14 +2591,9 @@ function wireEvents() {
 
   const soloReset = $("solo-reset");
   if (soloReset) soloReset.addEventListener("click", requestSoloReset);
-  const human = $("human-controller");
-  if (human) human.addEventListener("click", () => chooseController("human"));
-  const policy = $("policy-controller");
-  if (policy) policy.addEventListener("click", () => chooseController("policy"));
-  const override = $("override-controller");
-  if (override) override.addEventListener("click", () => chooseController("override"));
-  const modelSelect = $("model-select");
-  if (modelSelect) modelSelect.addEventListener("change", () => { updateSoloButtons(); updatePilotSource(); });
+  document.querySelectorAll("[data-solo-mode]").forEach((btn) => {
+    btn.addEventListener("click", () => { Sound.sfx("select"); openSoloMode(btn.dataset.soloMode); });
+  });
   window.addEventListener("keydown", (e) => {
     if (e.code === "ArrowDown" && currentScreenName === "solo") { e.preventDefault(); requestSoloReset(); return; }
     if (currentScreenName === "win" && (e.code === "Enter" || e.code === "Space")) { e.preventDefault(); advanceFromWin(); return; }

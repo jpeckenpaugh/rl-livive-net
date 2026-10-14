@@ -76,7 +76,7 @@
                 </div>
                 <div class="title-panel" id="title-panel-menu" hidden>
                   <div class="menu-stack">
-                    <button class="cab-btn cab-btn-primary" data-screen="solo" type="button">
+                    <button class="cab-btn cab-btn-primary" data-screen="solomode" type="button">
                       <b>SINGLE PLAYER</b><span>solo flight training</span>
                     </button>
                     <button class="cab-btn cab-btn-primary" data-screen="mode" type="button">
@@ -97,6 +97,24 @@
                       <b>[P3 ■] CUP — 4 PILOTS</b><span>10 seeded rounds</span>
                     </button>
                   </div>
+                </div>
+                <div class="title-panel" id="title-panel-solo" hidden>
+                  <p class="attract-eyebrow">SINGLE PLAYER · CHOOSE MODE</p>
+                  <div class="menu-stack" id="solo-mode-list">
+                    <button class="cab-btn cab-mode" data-solo-mode="human" type="button">
+                      <b>HUMAN PILOT</b><span>you fly the lander</span>
+                    </button>
+                    <button class="cab-btn cab-mode" data-solo-mode="override" type="button">
+                      <b>CO-PILOTING</b><span>the AI flies · you take over</span>
+                    </button>
+                    <button class="cab-btn cab-mode" data-solo-mode="policy" type="button">
+                      <b>AI PILOT</b><span>the pilot flies alone</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="title-panel" id="title-panel-pilot" hidden>
+                  <p class="attract-eyebrow">CHOOSE YOUR PILOT</p>
+                  <div class="pilot-cards" id="pilot-cards" role="group" aria-label="Choose your pilot"></div>
                 </div>
               </div>
             </div>
@@ -119,25 +137,14 @@
 
         <!-- ============================= SOLO ============================ -->
         <section id="screen-solo" class="screen" hidden aria-label="Solo flight">
-          <div class="screen-head">
-            <button class="cab-btn cab-btn-ghost back-btn" data-screen="menu" type="button">
-              ← MENU
-            </button>
+          <div class="screen-head solo-head">
             <span class="screen-kicker">SOLO FLIGHT</span>
+            <span class="context-chip" id="solo-pilot-chip">HUMAN PILOT</span>
           </div>
           <div class="game">
             <div class="game-head">
               <div><span class="live-dot"></span><span id="solo-status" aria-live="polite">WARMING UP THE CABINET</span></div>
               <span id="solo-episode">FLIGHT —</span>
-            </div>
-            <div class="controller-row">
-              <div class="controller-label"><span class="label">PILOT</span><strong>Choose who flies</strong></div>
-              <div class="controller-options" role="group" aria-label="Pilot">
-                <button id="human-controller" class="controller" type="button" title="You fly. ←/→ to steer, ↑ for the main engine." aria-label="Human Pilot: you fly the lander directly." aria-pressed="false" disabled><span class="controller-name">HUMAN PILOT</span><span class="controller-state">SELECT</span></button>
-                <button id="policy-controller" class="controller" type="button" title="The pilot flies every move on its own." aria-label="AI Pilot: the pilot controls every move on its own." aria-pressed="false" disabled><span class="controller-name">AI PILOT</span><span id="policy-label" class="controller-state">SELECT</span></button>
-                <button id="override-controller" class="controller" type="button" title="The AI flies. Hold ←/→ or ↑ to take over, release to hand back the stick." aria-label="Autopilot + Override: the AI flies, and held steering or engine input takes over." aria-pressed="false" disabled><span class="controller-name">AUTOPILOT + OVERRIDE</span><span class="controller-state">SELECT</span></button>
-              </div>
-              <p id="controller-help" class="controller-help" hidden></p>
             </div>
             <div id="solo-screen-wrap" class="screen-wrap">
               <canvas id="solo-canvas" width="600" height="400" aria-label="Lunar lander simulation"></canvas>
@@ -151,11 +158,6 @@
             </div>
             <div class="controls-row">
               <div id="controls-hint" class="hint controls-hint"><kbd>←</kbd><kbd>→</kbd> steer <span class="sep">·</span> <kbd>↑</kbd> main engine <span class="sep">·</span> <kbd>↓</kbd> reset</div>
-              <label class="model-select" id="model-select-field" for="model-select" hidden>
-                <span>PILOT</span>
-                <select id="model-select" title="Choose which pilot flies in AI Pilot and Autopilot + Override modes."></select>
-              </label>
-              <p id="pilot-source" class="pilot-source" hidden></p>
               <button id="solo-reset" class="cab-btn cab-btn-ghost" type="button" disabled>RESET ↻</button>
             </div>
           </div>

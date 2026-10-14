@@ -597,7 +597,11 @@ a { color: var(--gold); }
 .attract-title em { color: var(--amber); font-style: normal; display: block; }
 /* Menu and sub-menu keep the title up but give the options room to breathe. */
 .attract-screen[data-panel="menu"] .attract-title,
+.attract-screen[data-panel="solomode"] .attract-title,
 .attract-screen[data-panel="mode"] .attract-title { font-size: var(--type-mega); letter-spacing: 2px; }
+/* Choose Your Pilot needs the most room: a smaller title and tighter slot. */
+.attract-screen[data-panel="pilotselect"] .attract-title { font-size: var(--type-title-lg); letter-spacing: 2px; }
+.attract-screen[data-panel="pilotselect"] .attract-slot { margin-top: 10px; }
 .attract-slot { width: min(100%, 620px); margin-top: 18px; }
 .title-panel { display: grid; justify-items: center; gap: 12px; }
 .title-panel[hidden] { display: none; }
@@ -713,6 +717,44 @@ a { color: var(--gold); }
 .menu-stack { display: grid; gap: 12px; }
 .cab-mode, .menu-stack .cab-btn { width: 100%; }
 .cab-mode b { color: var(--p1); }
+
+/* Choose Your Pilot — a grid of arcade cards over the title layout. */
+.pilot-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+.pilot-card {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  text-align: left;
+  padding: 12px;
+  min-height: 72px;
+  border: 2px solid #34414d;
+  background: rgba(22, 30, 40, 0.94);
+  color: var(--text);
+  cursor: pointer;
+}
+.pilot-card:hover, .pilot-card:focus-visible {
+  border-color: var(--gold);
+  background: #1b2230;
+  transform: translateY(-2px);
+}
+.pilot-card-name {
+  font: var(--type-small)/1.25 var(--body);
+  color: var(--text);
+}
+.pilot-card-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.pilot-tag {
+  font: var(--type-micro)/1 var(--display);
+  letter-spacing: 0.5px;
+  color: var(--slate);
+  border: 1px solid #3d4b56;
+  padding: 3px 6px;
+}
+.pilot-tag.default { color: var(--void); background: var(--gold); border-color: var(--amber); }
 
 /* ------------------------------------------------------------------- solo */
 .game { border: 2px solid #34414d; background: #161e28; overflow: hidden; }
