@@ -13,6 +13,7 @@
         <a class="wordmark" href="./" aria-label="rl.livive.net home"><span class="mark">RL</span><span>livive<span class="muted">.net</span></span></a>
         <nav class="topnav" aria-label="Main navigation">
           <span class="runtime"><i></i> LUNAR LANDER / POLICY LAB</span>
+          <a href="https://huggingface.co/seekdepth/ppo-LunarLander-v2" target="_blank" rel="noreferrer">Model on Hugging Face <span aria-hidden="true">↗</span></a>
           <a href="./about.html">About</a>
         </nav>
       </header>
@@ -21,9 +22,11 @@
         <div class="controller-row">
           <div class="controller-label"><span class="label">FLIGHT CONTROLLER</span><strong>Choose who flies</strong></div>
           <div class="controller-options" role="group" aria-label="Flight controller">
-            <button class="controller active" type="button" aria-pressed="true">Human pilot <span>ACTIVE</span></button>
-            <button class="controller upcoming" type="button" disabled>Trained policy <span>UP NEXT</span></button>
+            <button id="human-controller" class="controller" type="button" title="You control the lander: ←/→ rotate, ↑ fire the main engine." aria-label="Human Pilot: you control the lander directly." aria-pressed="false" disabled><span class="controller-name">Human Pilot</span><span class="controller-state">SELECT</span></button>
+            <button id="override-controller" class="controller" type="button" title="The AI flies by default. Hold ←/→ to rotate or ↑ to fire the engine; release to return control to the AI." aria-label="Autopilot with Manual Override: AI flies by default, and held rotation or engine input overrides it." aria-pressed="false" disabled><span class="controller-name">Autopilot with Manual Override</span><span class="controller-state">SELECT</span></button>
+            <button id="policy-controller" class="controller" type="button" title="The ONNX-trained policy chooses every flight action." aria-label="AI Pilot: the trained policy controls every action." aria-pressed="false" disabled><span class="controller-name">AI Pilot</span><span id="policy-label" class="controller-state">SELECT</span></button>
           </div>
+          <p id="controller-help" class="controller-help" hidden>AI flies by default. Hold ←/→ to rotate or ↑ to fire the engine; release to return control to AI.</p>
         </div>
         <div class="screen-wrap">
           <canvas id="screen" width="600" height="400" aria-label="Lunar lander simulation"></canvas>
@@ -40,7 +43,7 @@
           <button id="reset" type="button" disabled>RESET <span>↻</span></button>
         </div>
       </section>
-      <footer><span>ENVIRONMENT ONLINE <b>·</b> POLICY INTEGRATION NEXT</span><a href="./about.html">How this POC works <span aria-hidden="true">↗</span></a></footer>
+      <footer><span>ENVIRONMENT ONLINE <b>·</b> ONNX POLICY</span><a href="./about.html">How this POC works <span aria-hidden="true">↗</span></a></footer>
     </main>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
     <script src="app.js" type="module"></script>

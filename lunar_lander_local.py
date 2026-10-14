@@ -24,6 +24,11 @@ LEG_AWAY, LEG_DOWN, LEG_W, LEG_H = 20, 18, 2, 8
 LEG_SPRING_TORQUE = 40
 SIDE_ENGINE_HEIGHT, SIDE_ENGINE_AWAY = 14.0, 12.0
 VIEWPORT_W, VIEWPORT_H = 600, 400
+LANDING_DWELL_STEPS = int(0.5 * FPS)
+LANDING_MAX_HORIZONTAL_SPEED = 0.05
+LANDING_MAX_VERTICAL_SPEED = 0.025
+LANDING_MAX_ANGLE = 0.2
+LANDING_MAX_ANGULAR_SPEED = 0.02
 
 
 class LunarLander(gym.Env, EzPickle):
@@ -53,6 +58,7 @@ class LunarLander(gym.Env, EzPickle):
         self.drawlist = []
         self.episode_steps = 0
         self.max_episode_steps = 1000
+        self.stable_landing_steps = 0
 
     def _on_contact(self, contact):
         a, b = contact.fixture_a.body, contact.fixture_b.body
@@ -86,6 +92,7 @@ class LunarLander(gym.Env, EzPickle):
         self.game_over = False
         self.prev_shaping = None
         self.episode_steps = 0
+        self.stable_landing_steps = 0
 
         width, height = VIEWPORT_W / SCALE, VIEWPORT_H / SCALE
         chunks = 11
@@ -219,10 +226,23 @@ class LunarLander(gym.Env, EzPickle):
         self.prev_shaping = shaping
         reward -= main_power * 0.30 + side_power * 0.03
 
+        in_landing_zone = self.helipad_x1 <= pos.x <= self.helipad_x2
+        both_legs_down = state[6] and state[7]
+        stable_motion = (
+            abs(state[2]) <= LANDING_MAX_HORIZONTAL_SPEED
+            and abs(state[3]) <= LANDING_MAX_VERTICAL_SPEED
+            and abs(state[4]) <= LANDING_MAX_ANGLE
+            and abs(state[5]) <= LANDING_MAX_ANGULAR_SPEED
+        )
+        if in_landing_zone and both_legs_down and stable_motion:
+            self.stable_landing_steps += 1
+        else:
+            self.stable_landing_steps = 0
+
         terminated = False
         if self.game_over or abs(state[0]) >= 1.0:
             terminated, reward = True, -100.0
-        if not self.lander.awake:
+        elif not self.lander.awake or self.stable_landing_steps >= LANDING_DWELL_STEPS:
             terminated, reward = True, 100.0
         truncated = self.episode_steps >= self.max_episode_steps
         if self.render_mode == "human":

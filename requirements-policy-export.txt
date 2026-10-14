@@ -1,0 +1,9 @@
+# One-time local export and action-parity validation (not used by the browser).
+numpy==2.0.2
+torch==2.6.0
+gymnasium==0.28.1
+stable-baselines3==2.0.0a5
+onnx==1.17.0
+onnxruntime==1.19.2
+huggingface_hub==0.34.4
+hf_xet==1.1.5

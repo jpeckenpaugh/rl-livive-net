@@ -9,3 +9,27 @@ footer{align-items:center;gap:18px}footer b{color:var(--lime);font-weight:400}fo
 .about-intro{padding:62px 0 32px}.about-intro h1{font:600 clamp(42px,7vw,64px)/1.02 'Space Grotesk',sans-serif;letter-spacing:-2.8px;margin:0}.about-intro .lede{font-size:15px;max-width:640px;margin-top:18px}.about-callout{display:flex;align-items:flex-start;gap:13px;padding:17px 19px;border:1px solid #3a4935;border-radius:4px;background:linear-gradient(110deg,#1d2a24,#171e28);margin-bottom:17px}.about-callout .live-dot{flex:none;margin-top:5px}.about-callout strong{font:500 12px 'DM Mono',monospace;color:var(--lime)}.about-callout p{margin:7px 0 0;color:#9ba8b5;font-size:13px;line-height:1.5}.about-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.about-card{padding:21px 22px 23px;border:1px solid var(--line);border-radius:4px;background:linear-gradient(140deg,#18212b,#131a23);min-height:205px}.about-card .eyebrow{font-size:8px;margin:0 0 16px}.about-card h2{font:500 20px/1.2 'Space Grotesk',sans-serif;letter-spacing:-.5px;margin:0 0 11px}.about-card p:not(.eyebrow){font-size:13px;color:#9ba8b5;line-height:1.65;margin:0}.action-key{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:17px;color:var(--lime);font:8px 'DM Mono',monospace;letter-spacing:.04em}.action-key span{padding:6px 7px;border:1px solid #34414d;border-radius:2px;background:#101820}.action-key b{font-weight:400;color:#74818c}.sources{display:flex;align-items:center;gap:22px;padding:22px 2px;border-bottom:1px solid var(--line);flex-wrap:wrap}.sources .eyebrow{margin:0;color:#75828d;font-size:8px}.sources a{font-size:9px}.sources a span{color:var(--lime);padding-left:4px}
 @media(max-width:600px){.shell{padding-left:16px;padding-right:16px}.topnav{gap:12px}.topnav .runtime{font-size:7px}.topnav a{font-size:9px}.intro{padding:40px 0 24px}.intro h1{letter-spacing:-1.8px}.controller-row{align-items:flex-start;flex-direction:column;gap:12px;padding:13px 12px}.controller-options{width:100%;gap:6px}.controller{flex:1;justify-content:center;gap:6px;padding:8px 6px;font-size:9px}.about-intro{padding:44px 0 27px}.about-intro h1{letter-spacing:-1.8px}.about-grid{grid-template-columns:1fr}.about-card{min-height:0;padding:19px}.sources{align-items:flex-start;flex-direction:column;gap:12px}footer{align-items:flex-start;flex-direction:column;gap:10px}}
 .overlay:not(.loading) .loader{display:none}
+.controller-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));flex:0 1 660px}
+.controller-row{display:grid;grid-template-columns:minmax(120px,1fr) minmax(0,660px);gap:8px 20px}
+.controller-label{grid-column:1;grid-row:1}
+.controller-options{grid-column:2;grid-row:1}
+.controller-help{grid-column:2;grid-row:2;margin:0;color:#8794a1;font-size:9px;line-height:1.35}
+.controller{justify-content:space-between;min-width:0;min-height:38px}
+.controller .controller-name{font-size:9px;line-height:1.2;letter-spacing:0;text-align:left}
+.controller .controller-state{flex:none;white-space:nowrap}
+#human-controller,#policy-controller{justify-content:flex-end}
+#human-controller .controller-name,#policy-controller .controller-name{text-align:right}
+#override-controller{justify-content:center}
+#override-controller .controller-name{text-align:center}
+.implementation-note{margin-top:14px;border:1px solid var(--line);border-radius:4px;background:linear-gradient(140deg,#18212b,#131a23)}
+.implementation-note summary{padding:14px 18px;color:#cbd5dd;cursor:pointer;font:9px 'DM Mono',monospace;letter-spacing:.05em}
+.implementation-note summary::marker{color:var(--lime)}
+.implementation-copy{padding:0 18px 17px;color:#9ba8b5;font-size:12px;line-height:1.6}
+.implementation-copy p{margin:0}
+.implementation-copy p+p{margin-top:10px}
+.implementation-copy a{color:#cbd5dd}
+.implementation-copy a:hover{color:var(--lime)}
+.course-lineage{margin-bottom:16px}
+.course-lineage a{color:#dce7d2;text-decoration-color:#6c805c;text-underline-offset:3px}
+.course-lineage a:hover{color:var(--lime)}
+@media(max-width:600px){.controller-row{grid-template-columns:1fr}.controller-label,.controller-options,.controller-help{grid-column:1}.controller-label{grid-row:1}.controller-options{grid-row:2;grid-template-columns:1fr;width:100%;flex:none}.controller-help{grid-row:3}.controller{flex:initial}}

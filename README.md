@@ -1,6 +1,6 @@
 # LunarLander Policy Lab
 
-The browser page is a playable environment POC, with trained-policy integration as the next milestone. The terminal launcher remains available for local play and environment work.
+The browser page is a playable environment POC with a selectable trained-policy controller. The terminal launcher remains available for local play and environment work.
 
 A small terminal-playable LunarLander environment using the upstream v0.26-era
 LunarLander constants/reward structure, PyPyBox2D for pure-Python physics, and
@@ -60,6 +60,40 @@ committed; deploys reuse it. See `third_party/README.md` for provenance and
 license details. GitHub Actions builds the first-party wheel for Pages.
 
 The browser uses JavaScript canvas rendering and does not require pygame.
+
+### Trained policy
+
+The browser runs the Stable-Baselines3 policy as a small ONNX actor with
+ONNX Runtime Web 1.19.2's WASM CPU backend. The browser receives the same
+8-value observation as the environment and selects the maximum of the model's
+four action logits. PyTorch, Stable-Baselines3, and the ONNX exporter are only
+used locally when producing the model file.
+
+The browser offers three flight modes: Human Pilot, AI Pilot, and Autopilot
+with Override. In override mode the AI controls the full action space by
+default; any held human arrow-key input takes control for that step.
+
+To reproduce the export on macOS, create a separate environment and run the
+exporter. If the Hugging Face checkpoint is still an LFS pointer in the
+submodule, the exporter downloads the checkpoint at the submodule's pinned
+Hugging Face revision into a temporary cache.
+
+```sh
+python3 -m venv .venv-policy-export
+.venv-policy-export/bin/pip install -r requirements-policy-export.txt
+.venv-policy-export/bin/python tools/export_lunarlander_policy.py
+```
+
+The export is written to `models/ppo-LunarLander-v2/ppo-LunarLander-v2.onnx`.
+The script compares ONNX logits and deterministic actions against the source
+SB3 policy before replacing the output file.
+
+The local `run.sh` build uses that submodule artifact when it is present. The
+Pages build does not check out submodules: it fetches the ONNX file from the
+public Hugging Face model repository at the full commit SHA in
+`models/onnx-revision.txt`. When updating the policy, publish the ONNX artifact
+to Hugging Face and update that file to the commit containing the upload. The
+existing deployment workflow remains unchanged.
 
 For the local launcher, the committed wheel is installed from `requirements.txt`:
 

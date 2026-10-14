@@ -1,4 +1,6 @@
 const PYODIDE_VERSION = "0.23.4";
+const ONNX_RUNTIME_VERSION = "1.19.2";
+const POLICY_MODEL_URL = new URL("./models/ppo-LunarLander-v2.onnx", import.meta.url);
 const FPS = 50;
 const SCALE = 30;
 const VIEWPORT_HALF_H = 400 / SCALE / 2;
@@ -12,6 +14,11 @@ let episode = 0;
 let totalReward = 0;
 let state = null;
 let action = 0;
+let controllerMode = null;
+let controllerRequest = 0;
+let policySession = null;
+let policyLoading = null;
+let onnxRuntimeLoading = null;
 let lastStep = 0;
 const pressed = new Set();
 
@@ -105,11 +112,128 @@ function updateTelemetry() {
   $("reward").textContent = totalReward.toFixed(1);
 }
 
+function updateControllerButtons() {
+  const choices = [
+    ["human-controller", "human"],
+    ["policy-controller", "policy"],
+    ["override-controller", "override"],
+  ];
+  for (const [id, mode] of choices) {
+    const button = $(id);
+    const selected = controllerMode === mode;
+    button.classList.toggle("active", selected);
+    button.setAttribute("aria-pressed", String(selected));
+    const stateLabel = button.querySelector(".controller-state");
+    stateLabel.textContent = selected ? "ACTIVE" : mode !== "human" && policySession ? "READY" : "SELECT";
+  }
+  $("controller-help").hidden = controllerMode !== "override";
+}
+
+function controllerButton(mode) {
+  const ids = {
+    human: "human-controller",
+    policy: "policy-controller",
+    override: "override-controller",
+  };
+  return $(ids[mode]);
+}
+
+async function ensurePolicySession() {
+  if (policySession) return policySession;
+  if (policyLoading) return policyLoading;
+  policyLoading = (async () => {
+    await loadOnnxRuntime();
+    const ort = globalThis.ort;
+    ort.env.wasm.wasmPaths = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ONNX_RUNTIME_VERSION}/dist/`;
+    ort.env.wasm.numThreads = 1;
+    const session = await ort.InferenceSession.create(POLICY_MODEL_URL.href, {
+      executionProviders: ["wasm"],
+      graphOptimizationLevel: "all",
+    });
+    if (!session.inputNames.includes("observation") || !session.outputNames.includes("logits")) {
+      session.release();
+      throw new Error("The ONNX policy has an unexpected input or output name");
+    }
+    policySession = session;
+    return session;
+  })().finally(() => {
+    policyLoading = null;
+  });
+  return policyLoading;
+}
+
+function loadOnnxRuntime() {
+  if (globalThis.ort) return Promise.resolve(globalThis.ort);
+  if (onnxRuntimeLoading) return onnxRuntimeLoading;
+  onnxRuntimeLoading = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ONNX_RUNTIME_VERSION}/dist/ort.min.js`;
+    script.async = true;
+    script.onload = () => globalThis.ort
+      ? resolve(globalThis.ort)
+      : reject(new Error("ONNX Runtime Web loaded without its browser API"));
+    script.onerror = () => reject(new Error("Could not load ONNX Runtime Web from jsDelivr"));
+    document.head.appendChild(script);
+  }).catch((error) => {
+    onnxRuntimeLoading = null;
+    throw error;
+  });
+  return onnxRuntimeLoading;
+}
+
+async function chooseController(mode) {
+  const request = ++controllerRequest;
+  if (mode !== "human") {
+    const button = controllerButton(mode);
+    const stateLabel = button.querySelector(".controller-state");
+    button.disabled = true;
+    stateLabel.textContent = "LOADING";
+    try {
+      await ensurePolicySession();
+    } catch (error) {
+      button.disabled = false;
+      if (request === controllerRequest) {
+        stateLabel.textContent = "RETRY";
+        status("POLICY LOAD ERROR");
+      } else {
+        stateLabel.textContent = policySession ? "READY" : "SELECT";
+      }
+      console.error(error);
+      return;
+    }
+    button.disabled = false;
+    if (request !== controllerRequest) {
+      stateLabel.textContent = "READY";
+      return;
+    }
+  }
+  if (request !== controllerRequest) return;
+  controllerMode = mode;
+  pressed.clear();
+  updateAction();
+  updateControllerButtons();
+  if (episode === 0 && state && !running) await resetEpisode();
+}
+
+async function choosePolicyAction(observation) {
+  const ort = globalThis.ort;
+  const input = new ort.Tensor("float32", Float32Array.from(observation), [1, 8]);
+  const result = await policySession.run({ observation: input });
+  const logits = result.logits.data;
+  let best = 0;
+  for (let i = 1; i < logits.length; i++) if (logits[i] > logits[best]) best = i;
+  return best;
+}
+
 function readPythonJson(expression) {
   return JSON.parse(pyodide.runPython(expression));
 }
 async function resetEpisode() {
   if (!pyodide || busy) return;
+  if (!controllerMode) {
+    status("SELECT A PILOT TO START");
+    return;
+  }
   busy = true; running = false;
   try {
     state = readPythonJson("reset_json()");
@@ -125,11 +249,18 @@ function showError(error) {
   overlay(String(error?.message || error).split("\n").slice(-5).join(" "), true);
   console.error(error);
 }
-function frame(now) {
+async function frame(now) {
   requestAnimationFrame(frame);
   if (!running || busy || now - lastStep < 1000 / FPS) return;
   lastStep = now; busy = true;
   try {
+    if (controllerMode === "override") {
+      const aiAction = await choosePolicyAction(state.observation);
+      const humanAction = humanOverrideAction();
+      action = humanAction === null ? aiAction : humanAction;
+    } else if (controllerMode === "policy") {
+      action = await choosePolicyAction(state.observation);
+    }
     const result = readPythonJson(`step_json(${action})`);
     state = result.state; totalReward += result.reward;
     updateTelemetry(); draw();
@@ -148,6 +279,12 @@ function updateAction() {
   else if (pressed.has("ArrowRight")) action = 3;
   else action = 0;
 }
+function humanOverrideAction() {
+  if (pressed.has("ArrowLeft")) return 1;
+  if (pressed.has("ArrowRight")) return 3;
+  if (pressed.has("ArrowUp")) return 2;
+  return null;
+}
 window.addEventListener("keydown", (event) => {
   if (event.code === "ArrowDown" && !event.repeat) {
     event.preventDefault();
@@ -155,12 +292,19 @@ window.addEventListener("keydown", (event) => {
     return;
   }
   if (["ArrowLeft", "ArrowRight", "ArrowUp"].includes(event.code)) {
-    event.preventDefault(); pressed.add(event.code); updateAction();
+    event.preventDefault();
+    if (controllerMode === "human" || controllerMode === "override") {
+      pressed.add(event.code); updateAction();
+    }
   }
 });
 window.addEventListener("keyup", (event) => { pressed.delete(event.code); updateAction(); });
 window.addEventListener("blur", () => { pressed.clear(); updateAction(); });
 $("reset").addEventListener("click", resetEpisode);
+$("human-controller").addEventListener("click", () => chooseController("human"));
+$("policy-controller").addEventListener("click", () => chooseController("policy"));
+$("override-controller").addEventListener("click", () => chooseController("override"));
+updateControllerButtons();
 
 async function start() {
   try {
@@ -201,8 +345,22 @@ def step_json(action):
     return json.dumps({"state": scene_data(observation), "reward": reward,
                        "terminated": terminated, "truncated": truncated})
 `);
-    await resetEpisode(); requestAnimationFrame(frame);
+    await prepareEnvironment(); requestAnimationFrame(frame);
   } catch (error) { showError(error); }
+}
+async function prepareEnvironment() {
+  busy = true;
+  try {
+    state = readPythonJson("reset_json()");
+    totalReward = 0;
+    updateTelemetry(); draw(); hideOverlay();
+    status("SELECT A PILOT TO START");
+    $("human-controller").disabled = false;
+    $("policy-controller").disabled = false;
+    $("override-controller").disabled = false;
+    $("reset").disabled = true;
+  } catch (error) { showError(error); }
+  finally { busy = false; }
 }
 async function installWheel(url) {
   pyodide.globals.set("_wheel_url", url);
