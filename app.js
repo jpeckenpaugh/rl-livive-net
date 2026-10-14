@@ -1,6 +1,5 @@
 const PYODIDE_VERSION = "0.23.4";
 const ONNX_RUNTIME_VERSION = "1.19.2";
-const POLICY_MODEL_URL = new URL("./models/ppo-LunarLander-v2.onnx", import.meta.url);
 const FPS = 50;
 const STEP_INTERVAL_MS = 1000 / FPS;
 const MAX_CATCH_UP_STEPS = 4;
@@ -21,8 +20,13 @@ let action = 0;
 let appliedAction = 0;
 let controllerMode = null;
 let controllerRequest = 0;
-let policySession = null;
-let policyLoading = null;
+const MODEL_FALLBACK = [
+  { id: "ppo", label: "PPO (1st party)", url: "models/ppo-LunarLander-v2.onnx" },
+];
+let modelCatalog = [];
+let activeModelId = null;
+const modelSessions = new Map();
+const modelLoading = new Map();
 let onnxRuntimeLoading = null;
 let simulationSpeed = 1;
 let autoResetRemaining = null;
@@ -155,8 +159,11 @@ function initializeMultiBoard() {
     const heading = document.createElement("div");
     heading.className = "multi-sim-heading";
     const title = document.createElement("strong");
+    const modelSelect = document.createElement("select");
+    modelSelect.className = "multi-sim-model";
+    modelSelect.setAttribute("aria-label", `AI model for simulation ${i + 1}`);
     const statusText = document.createElement("span");
-    heading.append(title, statusText);
+    heading.append(title, modelSelect, statusText);
 
     const simCanvas = document.createElement("canvas");
     simCanvas.width = 600;
@@ -167,7 +174,7 @@ function initializeMultiBoard() {
     reward.className = "multi-sim-reward";
     card.append(heading, simCanvas, reward);
     board.append(card);
-    multiSimulations.push({
+    const simulation = {
       index: i,
       state: null,
       action: 0,
@@ -180,7 +187,14 @@ function initializeMultiBoard() {
       title,
       statusText,
       rewardElement: reward,
+      modelSelect,
+      modelId: activeModelId,
+    };
+    modelSelect.addEventListener("change", () => {
+      simulation.modelId = modelSelect.value;
+      if (controllerMode === "multi" && pyodide && !busy && state) resetSelectedMulti([simulation.index]);
     });
+    multiSimulations.push(simulation);
   }
   drawMulti();
 }
@@ -228,7 +242,7 @@ function updateControllerButtons() {
     button.classList.toggle("active", selected);
     button.setAttribute("aria-pressed", String(selected));
     const stateLabel = button.querySelector(".controller-state");
-    stateLabel.textContent = selected ? "ACTIVE" : mode !== "human" && policySession ? "READY" : "SELECT";
+    stateLabel.textContent = selected ? "ACTIVE" : mode !== "human" && modelSessions.has(activeModelId) ? "READY" : "SELECT";
   }
   const help = $("controller-help");
   help.hidden = controllerMode !== "override" && controllerMode !== "multi";
@@ -247,28 +261,79 @@ function controllerButton(mode) {
   return $(ids[mode]);
 }
 
-async function ensurePolicySession() {
-  if (policySession) return policySession;
-  if (policyLoading) return policyLoading;
-  policyLoading = (async () => {
+async function loadModelCatalog() {
+  let manifest = null;
+  try {
+    const response = await fetch(new URL("./models/manifest.json", import.meta.url), { cache: "no-store" });
+    if (response.ok) manifest = await response.json();
+  } catch (error) {
+    console.warn("Model manifest unavailable; falling back to the bundled policy.", error);
+  }
+  const entries = manifest && Array.isArray(manifest.models) && manifest.models.length
+    ? manifest.models
+    : MODEL_FALLBACK;
+  modelCatalog = entries
+    .filter((model) => model && model.id && model.url)
+    .map((model) => ({
+      id: String(model.id),
+      label: String(model.label || model.id),
+      url: new URL(model.url, import.meta.url).href,
+    }));
+  activeModelId = modelCatalog.length ? modelCatalog[0].id : null;
+}
+
+function modelEntry(modelId) {
+  return modelCatalog.find((model) => model.id === modelId) || null;
+}
+
+function populateModelSelectors() {
+  if (modelCatalog.length === 0) return;
+  const options = modelCatalog.map((model) => {
+    const option = document.createElement("option");
+    option.value = model.id;
+    option.textContent = model.label;
+    return option;
+  });
+  const single = $("model-select");
+  if (single) {
+    single.replaceChildren(...options.map((option) => option.cloneNode(true)));
+    single.value = activeModelId;
+  }
+  const singleField = $("model-select-field");
+  if (singleField) singleField.hidden = modelCatalog.length < 2;
+  for (const simulation of multiSimulations) {
+    const chosen = modelCatalog[simulation.index % modelCatalog.length];
+    simulation.modelId = chosen.id;
+    simulation.modelSelect.replaceChildren(...options.map((option) => option.cloneNode(true)));
+    simulation.modelSelect.value = chosen.id;
+  }
+}
+
+async function ensureModelSession(modelId) {
+  if (modelSessions.has(modelId)) return modelSessions.get(modelId);
+  if (modelLoading.has(modelId)) return modelLoading.get(modelId);
+  const entry = modelEntry(modelId);
+  if (!entry) throw new Error(`Unknown AI model: ${modelId}`);
+  const loading = (async () => {
     await loadOnnxRuntime();
     const ort = globalThis.ort;
     ort.env.wasm.wasmPaths = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ONNX_RUNTIME_VERSION}/dist/`;
     ort.env.wasm.numThreads = 1;
-    const session = await ort.InferenceSession.create(POLICY_MODEL_URL.href, {
+    const session = await ort.InferenceSession.create(entry.url, {
       executionProviders: ["wasm"],
       graphOptimizationLevel: "all",
     });
     if (!session.inputNames.includes("observation") || !session.outputNames.includes("logits")) {
       session.release();
-      throw new Error("The ONNX policy has an unexpected input or output name");
+      throw new Error(`${entry.label}: unexpected ONNX input or output name`);
     }
-    policySession = session;
+    modelSessions.set(modelId, session);
     return session;
   })().finally(() => {
-    policyLoading = null;
+    modelLoading.delete(modelId);
   });
-  return policyLoading;
+  modelLoading.set(modelId, loading);
+  return loading;
 }
 
 function loadOnnxRuntime() {
@@ -298,14 +363,14 @@ async function chooseController(mode) {
     button.disabled = true;
     stateLabel.textContent = "LOADING";
     try {
-      await ensurePolicySession();
+      await ensureModelSession(activeModelId);
     } catch (error) {
       button.disabled = false;
       if (request === controllerRequest) {
         stateLabel.textContent = "RETRY";
         status("POLICY LOAD ERROR");
       } else {
-        stateLabel.textContent = policySession ? "READY" : "SELECT";
+        stateLabel.textContent = modelSessions.has(activeModelId) ? "READY" : "SELECT";
       }
       console.error(error);
       return;
@@ -333,6 +398,13 @@ async function chooseController(mode) {
   updateControllerButtons();
   setDisplayMode(mode === "multi");
   if (mode === "multi") {
+    try {
+      const panelModels = [...new Set(multiSimulations.map((simulation) => simulation.modelId))];
+      await Promise.all(panelModels.map((modelId) => ensureModelSession(modelId)));
+    } catch (error) {
+      showError(error);
+      return;
+    }
     if (pyodide && state) await resetMultiEpisode();
     return;
   }
@@ -349,8 +421,9 @@ async function chooseController(mode) {
   if (episode === 0 && state && !running) await resetEpisode();
 }
 
-async function choosePolicyActions(observations, simulationIndices = observations.map((_, index) => index)) {
+async function chooseModelActions(modelId, observations, simulationIndices) {
   if (observations.length === 0) return [];
+  const session = await ensureModelSession(modelId);
   const ort = globalThis.ort;
   const values = new Float32Array(observations.length * 8);
   observations.forEach((observation, index) => {
@@ -358,7 +431,7 @@ async function choosePolicyActions(observations, simulationIndices = observation
     values.set(staleSensorObservation(observation, simulationIndex), index * 8);
   });
   const input = new ort.Tensor("float32", values, [observations.length, 8]);
-  const result = await policySession.run({ observation: input });
+  const result = await session.run({ observation: input });
   const logits = result.logits.data;
   const actions = [];
   for (let row = 0; row < observations.length; row++) {
@@ -370,7 +443,7 @@ async function choosePolicyActions(observations, simulationIndices = observation
   return actions;
 }
 async function choosePolicyAction(observation, simulationIndex = 0) {
-  return (await choosePolicyActions([observation], [simulationIndex]))[0];
+  return (await chooseModelActions(activeModelId, [observation], [simulationIndex]))[0];
 }
 
 function readPythonJson(expression) {
@@ -457,13 +530,21 @@ async function advanceMultiStep() {
   const activeSimulations = multiSimulations.filter((simulation) => !simulation.done);
   if (activeSimulations.length === 0) return;
 
-  const observations = activeSimulations.map((simulation) => simulation.state.observation);
-  const activeActions = await choosePolicyActions(observations, activeSimulations.map((simulation) => simulation.index));
   const actions = multiSimulations.map(() => 0);
-  activeSimulations.forEach((simulation, index) => {
-    simulation.action = applyThrusterFault(activeActions[index], simulation.index);
-    actions[simulation.index] = simulation.action;
-  });
+  const groups = new Map();
+  for (const simulation of activeSimulations) {
+    const group = groups.get(simulation.modelId) || [];
+    group.push(simulation);
+    groups.set(simulation.modelId, group);
+  }
+  for (const [modelId, simulations] of groups) {
+    const observations = simulations.map((simulation) => simulation.state.observation);
+    const chosen = await chooseModelActions(modelId, observations, simulations.map((simulation) => simulation.index));
+    simulations.forEach((simulation, index) => {
+      simulation.action = applyThrusterFault(chosen[index], simulation.index);
+      actions[simulation.index] = simulation.action;
+    });
+  }
   const activeMask = multiSimulations.map((simulation) => !simulation.done);
   pyodide.globals.set("_multi_step_payload", JSON.stringify({ actions, active: activeMask }));
   let results;
@@ -640,6 +721,13 @@ $("human-controller").addEventListener("click", () => chooseController("human"))
 $("policy-controller").addEventListener("click", () => chooseController("policy"));
 $("override-controller").addEventListener("click", () => chooseController("override"));
 $("multi-controller").addEventListener("click", () => chooseController("multi"));
+$("model-select").addEventListener("change", (event) => {
+  activeModelId = event.currentTarget.value;
+  updateControllerButtons();
+  if (pyodide && controllerMode && controllerMode !== "human") {
+    ensureModelSession(activeModelId).catch((error) => showError(error));
+  }
+});
 $("time-scale").addEventListener("change", (event) => {
   simulationSpeed = Number(event.currentTarget.value);
   stepAccumulator = 0;
@@ -648,6 +736,10 @@ updateControllerButtons();
 
 async function start() {
   try {
+    status("LOADING AI MODELS"); overlay("Discovering AI models…", false, true);
+    await loadModelCatalog();
+    populateModelSelectors();
+    updateControllerButtons();
     status("LOADING PYTHON RUNTIME"); overlay("Loading Pyodide…", false, true);
     pyodide = await loadPyodide({ indexURL: `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/` });
     status("LOADING PYTHON PACKAGES"); overlay("Loading NumPy and the physics engine…", false, true);

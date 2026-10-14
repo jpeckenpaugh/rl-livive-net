@@ -44,6 +44,10 @@
         </div>
         <div class="controls-row">
           <div id="controls-hint" class="hint"><kbd>←</kbd><kbd>→</kbd> rotate <span class="sep">/</span> <kbd>↑</kbd> main engine <span class="sep">/</span> <kbd>↓</kbd> reset</div>
+          <label class="model-select" id="model-select-field" for="model-select" hidden>
+            <span>AI MODEL</span>
+            <select id="model-select" title="Which trained policy flies in AI Pilot and Autopilot modes. In 4 AI Simulations each panel picks its own model."></select>
+          </label>
           <label class="time-scale" for="time-scale">
             <span>TIME SCALE</span>
             <select id="time-scale" title="Simulation speed relative to default. 0.25× runs four times slower; 4× runs four times faster. AI inference and browser performance can limit the achieved speed.">

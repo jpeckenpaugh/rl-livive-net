@@ -41,3 +41,28 @@ EOF
     exit 1
   fi
 fi
+
+# Optional local contenders (either committed under models/contenders/ or
+# exported by the parent repo's docker/Makefile into ../models/contenders).
+# Each <CONTENDERS_DIR>/<id>/*.onnx becomes a selectable model in the demo.
+CONTENDERS_DIR="${CONTENDERS_DIR:-}"
+if [ -z "$CONTENDERS_DIR" ]; then
+  if [ -d "models/contenders" ]; then
+    CONTENDERS_DIR="models/contenders"
+  else
+    CONTENDERS_DIR="../models/contenders"
+  fi
+fi
+if [ -d "$CONTENDERS_DIR" ]; then
+  for contender_dir in "$CONTENDERS_DIR"/*/; do
+    [ -d "$contender_dir" ] || continue
+    name="$(basename "$contender_dir")"
+    if ls "$contender_dir"*.onnx >/dev/null 2>&1; then
+      mkdir -p "$SITE_DIR/models/contenders/$name"
+      cp "$contender_dir"*.onnx "$SITE_DIR/models/contenders/$name/"
+      echo "Bundled contender: $name"
+    fi
+  done
+fi
+
+"$PYTHON" tools/write_model_manifest.py "$SITE_DIR"

@@ -60,3 +60,13 @@ footer{align-items:center;gap:18px}footer b{color:var(--lime);font-weight:400}fo
 .multi-error{margin:14px;padding:12px;border:1px solid #8d594b;border-radius:3px;color:#ffad93;font:10px 'DM Mono',monospace}
 @media(max-width:600px){.multi-board{grid-template-columns:1fr;padding:10px}}
 @media(max-width:600px){.controller-options{grid-template-columns:1fr}}
+.model-select{display:grid;gap:5px;color:#788692;font:8px 'DM Mono',monospace;letter-spacing:.08em}
+.model-select[hidden]{display:none}
+.model-select select{min-width:150px;border:1px solid #3e4b56;border-radius:3px;background:#202a34;color:#dce4e9;padding:7px 9px;font:9px 'DM Mono',monospace;letter-spacing:0}
+.model-select select:focus-visible{outline:1px solid var(--lime);outline-offset:2px}
+.model-select option{background:#202a34;color:#dce4e9}
+.multi-sim-heading strong{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.multi-sim-model{border:1px solid #3e4b56;border-radius:3px;background:#202a34;color:#dce4e9;padding:4px 6px;font:8px 'DM Mono',monospace;letter-spacing:0;max-width:48%}
+.multi-sim-model:focus-visible{outline:1px solid var(--lime);outline-offset:2px}
+.multi-sim-model option{background:#202a34;color:#dce4e9}
+@media(max-width:560px){.model-select{order:4;flex:1 0 100%}.model-select select{width:100%}}
