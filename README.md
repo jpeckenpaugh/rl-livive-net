@@ -4,7 +4,7 @@ The browser page is a playable environment POC with a selectable trained-policy 
 
 ## Project links
 
-- [Live browser demo](https://rl.livive.net/)
+- [Live browser demo](https://lunar.livive.net/)
 - [Published PPO model card](https://huggingface.co/seekdepth/ppo-LunarLander-v2)
 - [Hugging Face Deep RL Course: Unit 1 hands-on](https://huggingface.co/learn/deep-rl-course/en/unit1/hands-on)
 
