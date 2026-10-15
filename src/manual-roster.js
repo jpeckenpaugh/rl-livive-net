@@ -8,10 +8,6 @@
  */
 import { escapeHtml } from "./lib.js";
 
-/* The first-party pilot is the one the cabinet ships by default; every other
- * entry is an imported contender. */
-export const DEFAULT_PILOT_ID = "ppo";
-
 /* Normalize manifest/catalog entries to the five columns About cares about. */
 export function pilotRows(models) {
   if (!Array.isArray(models)) return [];
@@ -39,14 +35,5 @@ export function renderPilotRowsHTML(models) {
       + `<td>${escapeHtml(row.algorithm || row.role)}</td>`
       + `<td>${escapeHtml(row.author || "—")}</td>`
       + `<td>${sourceLink(row)}</td></tr>`)
-    .join("");
-}
-
-/* Contender repos for "Sources & further reading", also manifest-driven so a
- * newly bundled contender shows up without editing the page. */
-export function renderContenderLinksHTML(models) {
-  return pilotRows(models)
-    .filter((row) => row.id !== DEFAULT_PILOT_ID && row.source)
-    .map((row) => `<li><a href="${escapeHtml(row.source)}" target="_blank" rel="noreferrer">${escapeHtml(row.label)}</a></li>`)
     .join("");
 }

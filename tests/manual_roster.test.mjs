@@ -6,7 +6,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { pilotRows, renderPilotRowsHTML, renderContenderLinksHTML, DEFAULT_PILOT_ID } from "../src/manual-roster.js";
+import { pilotRows, renderPilotRowsHTML } from "../src/manual-roster.js";
 
 const fixture = JSON.parse(readFileSync(new URL("./fixtures/manifest.json", import.meta.url), "utf8"));
 
@@ -24,13 +24,4 @@ test("roster renders one row per pilot and every row has a source", () => {
   const html = renderPilotRowsHTML(fixture.models);
   assert.equal((html.match(/<tr>/g) || []).length, 9);
   assert.ok(!html.includes("—</a>"), "an empty source must not become an empty link");
-});
-
-test("contender links exclude the default pilot and keep all eight repos", () => {
-  const rows = pilotRows(fixture.models);
-  const links = renderContenderLinksHTML(fixture.models);
-  assert.equal((links.match(/<li>/g) || []).length, 8);
-  const defaultRow = rows.find((row) => row.id === DEFAULT_PILOT_ID);
-  assert.ok(defaultRow, "fixture should carry the default pilot");
-  assert.ok(!links.includes(defaultRow.label), "default pilot should not appear in contender links");
 });

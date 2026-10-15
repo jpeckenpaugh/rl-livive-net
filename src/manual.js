@@ -1,12 +1,12 @@
 /* The "Cabinet Manual" overlay: the cabinet's About page as a modal web
  * document. The marquee `?` button opens it over the playfield; the panel
  * closes on the `×`, the footer Close, `Esc`, or a dimmer click. The pilot
- * roster and contender links are rendered from the loaded catalog so About
- * never drifts from the models that ship. */
+ * roster is rendered from the loaded catalog so About never drifts from the
+ * models that ship. */
 import { $ } from "./lib.js";
 import { state } from "./state.js";
 import { Sound } from "./audio.js";
-import { renderPilotRowsHTML, renderContenderLinksHTML } from "./manual-roster.js";
+import { renderPilotRowsHTML } from "./manual-roster.js";
 
 export function isManualOpen() {
   const overlay = $("about-overlay");
@@ -17,8 +17,6 @@ export function isManualOpen() {
 export function renderManual() {
   const roster = $("manual-roster-rows");
   if (roster) roster.innerHTML = renderPilotRowsHTML(state.catalog);
-  const contenders = $("manual-contender-links");
-  if (contenders) contenders.innerHTML = renderContenderLinksHTML(state.catalog);
 }
 
 export function openManual() {
