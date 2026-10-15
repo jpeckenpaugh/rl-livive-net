@@ -4,7 +4,8 @@ import { state } from "./state.js";
 import { $, clamp } from "./lib.js";
 import { Sound } from "./audio.js";
 import { drawScene } from "./render.js";
-import { modelLabel, ensureModelSession, chooseModelActions } from "./models.js";
+import { modelLabel, ensureModelSession, chooseModelDecision } from "./models.js";
+import { ACTION_LABELS } from "./policy.js";
 import { readPythonJson } from "./python.js";
 import { showScreen } from "./screens.js";
 import { recordFlight, cabinetHighScore, renderHighScores } from "./leaderboard.js";
@@ -16,8 +17,15 @@ export const solo = {
   prevObservation: null, stepIndex: 0, autoReset: null, speed: 1,
   accumulator: 0, resetRequested: false,
   modelId: null, pendingMode: null,
+  decision: null, decisionHistory: [],
   session: { flights: 0, bestScore: 0, bestTime: 0 },
 };
+
+/* Policy Inspector: the sparkline keeps the last N selected-action
+ * probabilities, and cached DOM references avoid re-querying each frame. The
+ * action labels themselves live in policy.js alongside the decision math. */
+const INSPECTOR_HISTORY = 60;
+const inspectorRefs = { bars: null, model: null, conf: null, note: null, spark: null };
 const soloCanvas = $("solo-canvas");
 const soloCtx = soloCanvas ? soloCanvas.getContext("2d") : null;
 
@@ -39,6 +47,106 @@ function updateSoloTelemetry() {
   $("reward").textContent = solo.totalReward.toFixed(1);
   const ft = $("flight-time");
   if (ft) ft.textContent = (solo.stepIndex * STEP_INTERVAL_MS / 1000).toFixed(1);
+  updatePolicyInspector();
+}
+
+/* ------------------------------------------------------------------ Policy
+ * Inspector: a live readout of the actor network's decision — the softmax
+ * action distribution, the chosen action, and its confidence — plus a short
+ * history sparkline of the selected-action probability. Shown only while an AI
+ * pilot (AI Pilot or Co-Piloting) is flying. Everything is computed from the
+ * logits the browser already receives from ONNX Runtime Web; nothing extra is
+ * downloaded and nothing leaves the page. */
+function ensurePolicyInspector() {
+  const panel = $("policy-inspector");
+  if (!panel || inspectorRefs.bars) return panel;
+  inspectorRefs.model = $("pi-model");
+  inspectorRefs.conf = $("pi-conf");
+  inspectorRefs.note = $("pi-note");
+  inspectorRefs.spark = $("pi-spark");
+  const bars = $("pi-bars");
+  if (bars) {
+    bars.replaceChildren(...ACTION_LABELS.map((label, i) => {
+      const row = document.createElement("div");
+      row.className = "pi-row";
+      const name = document.createElement("span");
+      name.className = "pi-label";
+      name.textContent = label;
+      const track = document.createElement("span");
+      track.className = "pi-track";
+      const fill = document.createElement("span");
+      fill.className = "pi-fill";
+      track.append(fill);
+      const val = document.createElement("span");
+      val.className = "pi-val";
+      val.textContent = "—";
+      row.dataset.action = String(i);
+      row.append(name, track, val);
+      return row;
+    }));
+    inspectorRefs.bars = Array.from(bars.children);
+  }
+  return panel;
+}
+
+function drawInspectorSpark() {
+  const spark = inspectorRefs.spark;
+  if (!spark || !spark.getContext) return;
+  const ctx = spark.getContext("2d");
+  const w = spark.width, h = spark.height;
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = "rgba(255,255,255,0.05)";
+  ctx.fillRect(0, 0, w, h);
+  const hist = solo.decisionHistory;
+  if (hist.length < 2) return;
+  ctx.beginPath();
+  hist.forEach((p, i) => {
+    const x = (i / (INSPECTOR_HISTORY - 1)) * w;
+    const y = h - p * h;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = "#E5B95C";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+
+function updatePolicyInspector() {
+  const panel = ensurePolicyInspector();
+  if (!panel) return;
+  const aiMode = solo.controllerMode === "policy" || solo.controllerMode === "override";
+  const show = aiMode && !!solo.decision;
+  panel.hidden = !show;
+  if (!show) return;
+  const d = solo.decision;
+  if (inspectorRefs.model) inspectorRefs.model.textContent = modelLabel(soloModelId()) || "AI";
+  if (inspectorRefs.conf) inspectorRefs.conf.textContent = `${(d.probs[d.action] * 100).toFixed(1)}% CONF`;
+  let best = 0;
+  for (let i = 1; i < 4; i++) if (d.probs[i] > d.probs[best]) best = i;
+  d.probs.forEach((p, i) => {
+    const row = inspectorRefs.bars && inspectorRefs.bars[i];
+    if (!row) return;
+    const fill = row.querySelector(".pi-fill");
+    const val = row.querySelector(".pi-val");
+    if (fill) fill.style.width = `${Math.max(1.5, p * 100).toFixed(1)}%`;
+    if (val) val.textContent = `${(p * 100).toFixed(0)}%`;
+    row.classList.toggle("chosen", i === d.action);
+    row.classList.toggle("runner", i === best && i !== d.action);
+    row.classList.toggle("overridden", solo.controllerMode === "override" && i === d.action && d.overridden);
+  });
+  if (inspectorRefs.note) {
+    inspectorRefs.note.textContent = solo.controllerMode === "override" && d.overridden
+      ? `AI INTENT OVERRIDDEN · logit ${d.logits[d.action].toFixed(2)}`
+      : `chosen logit ${d.logits[d.action].toFixed(2)} · argmax(actor)`;
+  }
+  drawInspectorSpark();
+}
+
+function recordDecision(decision) {
+  solo.decision = decision;
+  solo.decisionHistory.push(decision.probs[decision.action]);
+  if (solo.decisionHistory.length > INSPECTOR_HISTORY) {
+    solo.decisionHistory.splice(0, solo.decisionHistory.length - INSPECTOR_HISTORY);
+  }
 }
 function soloModelId() { return solo.modelId || (state.catalog[0] && state.catalog[0].id) || null; }
 function soloModeLabel(mode = solo.controllerMode) {
@@ -49,6 +157,7 @@ function soloModeLabel(mode = solo.controllerMode) {
 }
 function updateSoloPilotChip() {
   const chip = $("solo-pilot-chip"); if (chip) chip.textContent = soloModeLabel();
+  updatePolicyInspector();
 }
 function recordSoloSession(score, flightTime) {
   const s = solo.session;
@@ -240,6 +349,7 @@ async function resetSoloEpisode() {
     solo.action = 0; solo.appliedAction = 0;
     solo.prevObservation = Array.from(solo.state.observation);
     solo.stepIndex = 0; solo.accumulator = 0; solo.totalReward = 0; solo.episode += 1;
+    solo.decision = null; solo.decisionHistory = [];
     updateSoloTelemetry();
     drawScene(soloCanvas, soloCtx, solo.state, solo.appliedAction);
     soloStatus("FLIGHT LIVE"); soloHideOverlay();
@@ -275,11 +385,16 @@ export async function soloFrame(elapsedMs) {
     while (steps < MAX_CATCH_UP_STEPS && solo.running && solo.accumulator >= STEP_INTERVAL_MS) {
       let action = 0;
       if (solo.controllerMode === "human") action = humanSoloAction();
-      else if (solo.controllerMode === "policy") action = (await chooseModelActions(soloModelId(), [solo.prevObservation]))[0];
-      else if (solo.controllerMode === "override") {
-        const ai = (await chooseModelActions(soloModelId(), [solo.prevObservation]))[0];
+      else if (solo.controllerMode === "policy") {
+        const decision = await chooseModelDecision(soloModelId(), solo.prevObservation);
+        recordDecision(decision);
+        action = decision.action;
+      } else if (solo.controllerMode === "override") {
+        const decision = await chooseModelDecision(soloModelId(), solo.prevObservation);
         const human = (pressed.has("ArrowLeft") ? 1 : pressed.has("ArrowRight") ? 3 : pressed.has("ArrowUp") ? 2 : null);
-        action = human === null ? ai : human;
+        decision.overridden = human !== null;
+        recordDecision(decision);
+        action = human === null ? decision.action : human;
       }
       const before = Array.from(solo.state.observation);
       solo.appliedAction = action;

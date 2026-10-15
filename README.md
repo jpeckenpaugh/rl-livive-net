@@ -80,7 +80,7 @@ bundler):
 - `src/state.js` — shared mutable state.
 - `src/data.js` — loads the JSON tables from `data/` at boot.
 - `src/hazards.js`, `src/audio.js`, `src/render.js`, `src/models.js`,
-  `src/leaderboard.js`, `src/input.js` — feature modules.
+  `src/policy.js`, `src/leaderboard.js`, `src/input.js` — feature modules.
 - `src/solo.js`, `src/match.js` — Solo Flight and Tournament engines.
 - `src/screens.js`, `src/ui.js`, `src/attract.js` — screen router, menus, attract demo.
 - `src/python.js` + `src/py/setup.py` — Pyodide bridge and Python bootstrap.
@@ -101,6 +101,16 @@ offers a 4 AI Simulations mode: four independent environments run policy actions
 concurrently, using a batched ONNX inference call and keeping separate rewards
 and episode outcomes. In override mode the AI controls the full action space by
 default; any held human arrow-key input takes control for that step.
+
+While an AI pilot is flying, the **Policy Inspector** panel reads out the actor
+network's live decision: the softmax probabilities for the four discrete actions
+(COAST / LEFT / BURN / RIGHT), the chosen action, its confidence, the winning
+logit, and a short sparkline of the selected-action probability across recent
+steps. In Co-Piloting mode it also flags when a human input overrides the AI's
+intended action. The panel is computed from the logits the browser already
+receives from ONNX Runtime Web — no extra download, no server, nothing leaves the
+page. The pure decision math lives in `src/policy.js` and is unit tested in
+`tests/policy.test.mjs`.
 
 The browser-only Sensor Fault and Thruster Fault controls each default to OFF
 and offer 5%, 10%, 25%, and 50% settings. Sensor Fault substitutes the previous

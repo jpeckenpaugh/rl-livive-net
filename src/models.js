@@ -2,6 +2,7 @@
 import { ONNX_RUNTIME_VERSION } from "./config.js";
 import { state } from "./state.js";
 import { data } from "./data.js";
+import { argmax4, decisionFromLogits } from "./policy.js";
 
 const modelSessions = new Map();
 const modelLoading = new Map();
@@ -81,21 +82,31 @@ export function loadOnnxRuntime() {
   }).catch((err) => { onnxRuntimeLoading = null; throw err; });
   return onnxRuntimeLoading;
 }
-export async function chooseModelActions(modelId, observations) {
-  if (observations.length === 0) return [];
+/* Run the actor network and return the raw action logits for each observation
+ * row. Shared by the action-choosing helpers and the Policy Inspector. */
+async function runPolicyLogits(modelId, observations) {
   const session = await ensureModelSession(modelId);
   const ort = globalThis.ort;
   const values = new Float32Array(observations.length * 8);
   observations.forEach((obs, i) => values.set(obs, i * 8));
   const input = new ort.Tensor("float32", values, [observations.length, 8]);
   const result = await session.run({ observation: input });
-  const logits = result.logits.data;
+  return result.logits.data;
+}
+
+export async function chooseModelActions(modelId, observations) {
+  if (observations.length === 0) return [];
+  const logits = await runPolicyLogits(modelId, observations);
   const actions = [];
   for (let row = 0; row < observations.length; row++) {
-    let best = 0;
-    const off = row * 4;
-    for (let i = 1; i < 4; i++) if (logits[off + i] > logits[off + best]) best = i;
-    actions.push(best);
+    actions.push(argmax4(logits, row * 4));
   }
   return actions;
+}
+
+/* Single-observation decision with the full logit row and softmax action
+ * distribution, for the Policy Inspector. */
+export async function chooseModelDecision(modelId, observation) {
+  const logits = await runPolicyLogits(modelId, [observation]);
+  return decisionFromLogits(logits, 0);
 }

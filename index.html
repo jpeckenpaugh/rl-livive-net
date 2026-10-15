@@ -194,6 +194,18 @@
                 <div class="hud-read"><span>FLIGHT TIME</span><strong id="flight-time">—</strong><small>s</small></div>
                 <div class="hud-read"><span>SCORE</span><strong id="reward">—</strong><small>pts</small></div>
               </div>
+              <div id="policy-inspector" class="policy-inspector" hidden aria-label="AI policy decision inspector">
+                <div class="pi-head">
+                  <span class="pi-title">POLICY INSPECTOR</span>
+                  <span class="pi-model" id="pi-model">PPO</span>
+                  <span class="pi-conf" id="pi-conf">—</span>
+                </div>
+                <div class="pi-bars" id="pi-bars"></div>
+                <div class="pi-foot">
+                  <canvas id="pi-spark" class="pi-spark" width="120" height="26" aria-hidden="true"></canvas>
+                  <span class="pi-note" id="pi-note">argmax(actor)</span>
+                </div>
+              </div>
             </div>
             <div id="solo-result" class="solo-result" hidden>
               <div class="result-panel" role="dialog" aria-modal="true" aria-labelledby="result-outcome">

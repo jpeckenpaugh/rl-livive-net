@@ -420,6 +420,51 @@
 .hud-read strong { font: var(--type-title-sm)/1 var(--body); color: var(--amber); }
 .hud-read small { color: var(--muted); font-size: var(--type-micro); }
 
+/* Policy Inspector — a live readout of the actor network's decision for AI
+   pilots: per-action softmax probabilities, the chosen action, its confidence,
+   and a short history sparkline of the selected-action probability. */
+.policy-inspector {
+  position: absolute;
+  left: 16px;
+  bottom: 14px;
+  width: 236px;
+  padding: 9px 11px 8px;
+  display: grid;
+  gap: 6px;
+  background: rgba(10, 11, 16, 0.78);
+  border: 1px solid #2a3742;
+  pointer-events: none;
+}
+.policy-inspector[hidden] { display: none; }
+.pi-head { display: flex; align-items: center; gap: 6px; }
+.pi-title { font: var(--type-micro)/1 var(--display); letter-spacing: 1px; color: var(--p1); }
+.pi-model {
+  font: var(--type-micro)/1 var(--display);
+  color: var(--gold);
+  border: 1px solid #3d4b56;
+  padding: 2px 5px;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pi-conf { margin-left: auto; font: var(--type-micro)/1 var(--display); color: var(--amber); }
+.pi-bars { display: grid; gap: 4px; }
+.pi-row { display: grid; grid-template-columns: 42px 1fr 34px; align-items: center; gap: 6px; }
+.pi-label { font: var(--type-micro)/1 var(--display); color: var(--slate); letter-spacing: 0.5px; }
+.pi-track { position: relative; height: 8px; background: #1b2530; border: 1px solid #2a3742; overflow: hidden; }
+.pi-fill { display: block; height: 100%; width: 0; background: #3d4b56; transition: width 90ms linear; }
+.pi-val { font: var(--type-tiny)/1 var(--body); color: var(--muted); text-align: right; }
+.pi-row.chosen .pi-fill { background: var(--gold); }
+.pi-row.chosen .pi-label { color: var(--amber); }
+.pi-row.chosen .pi-val { color: var(--amber); }
+.pi-row.runner .pi-fill { background: #6b7c4a; }
+.pi-row.overridden .pi-fill { background: var(--p4); }
+.pi-row.overridden .pi-label { color: var(--p4); }
+.pi-foot { display: flex; align-items: center; gap: 8px; }
+.pi-spark { width: 120px; height: 26px; image-rendering: pixelated; }
+.pi-note { font: var(--type-micro)/1.2 var(--body); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* Flight Over: a pop-up menu over the playfield with the outcome, the stats,
    and what to do next. */
 .solo-result {
