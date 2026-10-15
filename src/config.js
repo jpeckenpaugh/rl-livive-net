@@ -30,6 +30,7 @@ export const BOOT_TIMINGS = {
   flickerOff: 430,    // RESET: collapse-to-line power-off
   lineSettle: 70,     // dwell after each POST line resolves
   studioHold: 1150,   // LIVIVE.NET STUDIOS slice-in hold
+  readyHold: 2000,    // hold on READY before the studio intro (AIA-50)
   crossSlice: 520,    // cross-slice wipe into the title
   titleStage: 780,    // staged title/coin/tagline fade-in
   warmPost: 700,      // warm-boot short POST hold

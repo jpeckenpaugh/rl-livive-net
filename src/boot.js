@@ -193,6 +193,9 @@ export async function coldBoot(steps) {
   // Keep a minimum readable boot time on a warm cache.
   const elapsed = Date.now() - startedAt;
   if (elapsed < BOOT_TIMINGS.minTotal) await sleep(BOOT_TIMINGS.minTotal - elapsed);
+  // Hold on READY so the all-clear line is readable before the studio intro.
+  // A hold is not motion, so prefers-reduced-motion keeps the same dwell (AIA-50).
+  await sleep(BOOT_TIMINGS.readyHold);
   // STUDIO_INTRO: LIVIVE.NET STUDIOS slices in.
   const bootEl = $("screen-boot");
   showScreen("boot");
