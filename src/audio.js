@@ -12,6 +12,9 @@ export const Sound = (() => {
   let trackId = null;
   let track = null;
   let musicGain = null;
+  // Temporarily hold music while the screen router swaps tracks (a warm-boot
+  // RESET must not blip a note); resumeMusic() restarts the current track.
+  let musicSuspended = false;
   // 1990s-arcade announcer voice pack (8-bit / 8 kHz callouts). Cosmetic only:
   // every path here fails soft so a missing clip or locked audio never breaks play.
   // assets/voice/manifest.json is authoritative for which clips exist. The
@@ -105,7 +108,7 @@ export const Sound = (() => {
     if (track.once && musicStep >= trackLength(track)) stopMusic();
   }
   function startMusic() {
-    if (!ctx || !musicOn || !track || musicTimer) return;
+    if (!ctx || !musicOn || !track || musicTimer || musicSuspended) return;
     if (track.once && musicStep >= trackLength(track)) musicStep = 0;
     musicTimer = setInterval(musicTick, track.stepMs || 300);
     musicTick();
@@ -224,7 +227,7 @@ export const Sound = (() => {
   }
   return {
     unlock, sfx, toggleMusic, ensure, startMusic, stopMusic, setTrack,
-    loadVoices, voice, toggleVoices, toggleSfx,
+    loadVoices, voice, toggleVoices, toggleSfx, stopVoices,
     isOn: () => musicOn,
     isSfxOn: () => sfxOn,
     isUnlocked: () => unlocked,
@@ -233,7 +236,12 @@ export const Sound = (() => {
     voiceNames: () => [...voiceIds],
     clipFile: (id) => clipFile(id),
     manifest: () => voiceManifest,
-    setEnabled(on) { musicOn = on; if (on) startMusic(); else stopMusic(); },
+    // Persisted-pref setters (AIA-46 R3): seed each layer before any sound plays.
+    setEnabled(on) { musicOn = !!on; if (musicOn) startMusic(); else stopMusic(); return musicOn; },
+    setSfxEnabled(on) { sfxOn = !!on; return sfxOn; },
+    setVoicesEnabled(on) { voicesOn = !!on; if (!voicesOn) stopVoices(); return voicesOn; },
+    suspendMusic() { musicSuspended = true; stopMusic(); },
+    resumeMusic() { musicSuspended = false; if (musicOn) startMusic(); },
   };
 })();
 

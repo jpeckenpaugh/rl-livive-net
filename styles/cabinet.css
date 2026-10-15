@@ -178,6 +178,44 @@
 }
 .cabinet-screen > * { position: relative; z-index: 1; }
 
+/* ------------------------------------------------ CRT power-on/off overlay */
+/* Decorative layer above the scanlines for the cold-boot power-on sweep and the
+   RESET power-off collapse (AIA-46). Durations mirror BOOT_TIMINGS.flickerOn /
+   flickerOff in src/config.js — keep them in sync. Out of the flex flow and
+   pointer-transparent so it never blocks the cabinet. */
+.cabinet-screen > .crt-fx {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  opacity: 0;
+  background: transparent;
+}
+.cabinet-screen > .crt-fx.crt-off { animation: crtOff 0.43s steps(3) both; }
+.cabinet-screen > .crt-fx.crt-on { animation: crtOn 0.56s steps(3) both; }
+@keyframes crtOff {
+  0% { opacity: 1; background: #fff6c8; clip-path: inset(0 0 0 0); }
+  40% { opacity: 1; background: #fff6c8; clip-path: inset(49.4% 0 49.4% 0); }
+  70% { opacity: .8; background: #fff6c8; clip-path: inset(49.8% 0 49.8% 0); }
+  100% { opacity: 1; background: #000; clip-path: inset(0 0 0 0); }
+}
+@keyframes crtOn {
+  0% { opacity: 1; background: #fff6c8; clip-path: inset(49.6% 0 49.6% 0); }
+  24% { opacity: 1; background: #fff6c8; clip-path: inset(0 0 0 0); }
+  42% { opacity: .1; background: #000; clip-path: inset(0 0 0 0); }
+  58% { opacity: 1; background: #cfe0c2; clip-path: inset(0 0 0 0); }
+  74% { opacity: .3; background: #000; clip-path: inset(0 0 0 0); }
+  88% { opacity: 1; background: #fff6c8; clip-path: inset(2% 0 2% 0); }
+  100% { opacity: 0; background: transparent; clip-path: inset(0 0 0 0); }
+}
+/* Reduced motion: no sweep or roll, just a simple fade in / fade to black. */
+@media (prefers-reduced-motion: reduce) {
+  .cabinet-screen > .crt-fx.crt-on { animation: crtFadeIn 0.24s linear both; }
+  .cabinet-screen > .crt-fx.crt-off { animation: crtCoverIn 0.24s linear both; }
+}
+@keyframes crtFadeIn { from { opacity: 1; background: #000; } to { opacity: 0; background: transparent; } }
+@keyframes crtCoverIn { from { opacity: 0; background: #000; } to { opacity: 1; background: #000; } }
+
 /* ------------------------------------------------------- D3 control deck */
 /* The deck is a touch-only affordance. On fine pointers it is removed from the
    flow entirely so the monitor fills and centers in the cabinet; on coarse

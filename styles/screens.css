@@ -16,6 +16,81 @@
 .boot-presents { font: var(--type-caption)/1 var(--display); color: var(--slate); margin-top: 12px; letter-spacing: 4px; }
 @keyframes bootpulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
 
+/* --------------------------------------------------------- POST / EPROM */
+/* Green phosphor system check (AIA-46 R1 step 3). Each line is revealed by
+   src/boot.js as its real load step resolves. */
+.post-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--void);
+}
+.post-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0 8px;
+  width: min(100%, 560px);
+  font: var(--type-body)/1.55 var(--body);
+  color: #7CFC7C;
+  letter-spacing: 1px;
+  text-shadow: 0 0 6px rgba(60, 255, 120, 0.28);
+}
+.post-line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+  min-height: 1.55em;
+  transition: opacity 0.12s steps(2);
+}
+.post-line[data-state="pending"] { opacity: .22; }
+.post-line[data-state="active"] { opacity: 1; }
+.post-line.post-banner {
+  color: var(--gold);
+  font-family: var(--display);
+  font-size: var(--type-caption);
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+}
+.post-lead {
+  flex: 1 1 auto;
+  min-width: 12px;
+  align-self: center;
+  border-bottom: 1px dotted currentColor;
+  opacity: .45;
+  transform: translateY(-2px);
+}
+.post-status { min-width: 5ch; text-align: right; }
+.post-line[data-state="active"] .post-status::after { content: "…"; }
+.post-line[data-state="done"] .post-status { color: #C7F36B; }
+.post-line[data-state="warn"] .post-status { color: var(--p4); }
+
+/* ----------------------------------------- slice wipes (intro + cross) */
+/* Stepped clip-path wipe so it reads as horizontal slices, not a soft fade. */
+.slice-in { animation: sliceIn 0.52s steps(9, end) both; }
+.slice-out { animation: sliceOut 0.52s steps(9, end) both; }
+@keyframes sliceIn { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes sliceOut { from { clip-path: inset(0 0 0 0); } to { clip-path: inset(100% 0 0 0); } }
+
+/* ------------------------------------------- staged title fade-in (R1 step 6) */
+.attract-screen.boot-title-in .attract-title { animation: titleStageIn 0.3s steps(2) both; }
+.attract-screen.boot-title-in .attract-tagline { animation: titleStageIn 0.3s steps(2) 0.36s both; }
+.attract-screen.boot-title-in .coin-btn {
+  animation: titleStageIn 0.3s steps(2) 0.18s both, blink 1.1s steps(2) 0.48s infinite;
+}
+@keyframes titleStageIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Reduced motion: no roll/slice motion, just short fades. */
+@media (prefers-reduced-motion: reduce) {
+  .slice-in { animation: sliceFadeIn 0.22s linear both; }
+  .slice-out { animation: sliceFadeOut 0.22s linear both; }
+  .attract-screen.boot-title-in .attract-title,
+  .attract-screen.boot-title-in .attract-tagline,
+  .attract-screen.boot-title-in .coin-btn { animation: sliceFadeIn 0.22s linear both; }
+}
+@keyframes sliceFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sliceFadeOut { from { opacity: 1; } to { opacity: 0; } }
+
 /* ---------------------------------------------------------------- attract */
 /* Title screen: the live attract demo is a full-bleed background layer, and
    the title, PRESS START, and the three persistent leaderboards float on top.

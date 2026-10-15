@@ -26,6 +26,8 @@ import { attractDemoFrame, rotateAttractTagline, resetAttractDemo } from "./attr
 import { initManual, renderManual, isManualOpen } from "./manual.js";
 import { initBuild, isBuildOpen } from "./build.js";
 import { loadCustomModels } from "./custom-models.js";
+import { coldBoot, cabinetReset } from "./boot.js";
+import { readAudioPrefs, writeAudioPrefs } from "./audio-prefs.js";
 
 /* ============================================================================
  * MAIN LOOP
@@ -77,41 +79,84 @@ function matchFault(err) {
  * BOOT / WIRING
  * ==========================================================================*/
 async function boot() {
-  await loadData();
-  renderHighScores();
-  startHighScoreReel();
-  initializePanels();
+  applyAudioPrefs();
   const startBtn = $("start-game");
   if (startBtn) startBtn.disabled = true;
   bindTouch($("cabinet-deck"), pressed);
-  showScreen("boot");
-  setStatus("ROLLING OUT THE PILOTS");
-  await loadCatalog();
-  await loadCustomModels();
-  renderManual();
-  populateSoloPilots();
-  await new Promise((r) => setTimeout(r, 1200));
-  showScreen("attract");
   try {
-    state.pyodide = await loadPyodide({ indexURL: `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/` });
-    await state.pyodide.loadPackage(["numpy", "micropip"]);
-    const wheelBase = new URL("./third_party/wheels/", window.location.href);
-    await installWheel(new URL("pypybox2d-2.1.post331-py3-none-any.whl", wheelBase).href);
-    const appWheel = new URL("./packages/lunarlander_gym_shim-0.1.0-py3-none-any.whl", window.location.href);
-    await installWheel(appWheel.href);
-    await state.pyodide.runPythonAsync(await loadPySetup());
-    state.simReady = true;
-    primeSoloScene();
-    // warm the default pilot in the background
-    ensureModelSession(state.catalog[0]?.id).catch(() => {});
-    enableCabinet();
-    setStatus("CABINET READY · INSERT COIN");
+    await coldBoot(buildBootSteps());
   } catch (err) {
     console.error(err);
     setStatus("CABINET FAULT");
     soloErrorOverlay(String(err && err.message || err));
+    return;
   }
+  enableCabinet();
+  setStatus("CABINET READY · INSERT COIN");
 }
+
+/* Real load steps, in order. Each POST line advances only when its step
+ * resolves. The ONNX pilot warm-up is best-effort so a slow CDN cannot fault
+ * boot; the attract demo retries it later if it is skipped. */
+function buildBootSteps() {
+  return [
+    { label: "LOADING CATALOG", run: bootCatalog },
+    { label: "PYTHON CORE", run: async () => {
+      state.pyodide = await loadPyodide({ indexURL: `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/` });
+    } },
+    { label: "NUMPY / MICROPIP", run: () => state.pyodide.loadPackage(["numpy", "micropip"]) },
+    { label: "PHYSICS MODULE", run: bootPhysics },
+    { label: "NEURAL PILOT", run: bootWarmPilot, optional: true },
+  ];
+}
+
+async function bootCatalog() {
+  await loadData();
+  renderHighScores();
+  startHighScoreReel();
+  initializePanels();
+  await loadCatalog();
+  await loadCustomModels();
+  renderManual();
+  populateSoloPilots();
+}
+
+async function bootPhysics() {
+  const wheelBase = new URL("./third_party/wheels/", window.location.href);
+  await installWheel(new URL("pypybox2d-2.1.post331-py3-none-any.whl", wheelBase).href);
+  const appWheel = new URL("./packages/lunarlander_gym_shim-0.1.0-py3-none-any.whl", window.location.href);
+  await installWheel(appWheel.href);
+  await state.pyodide.runPythonAsync(await loadPySetup());
+  state.simReady = true;
+  primeSoloScene();
+}
+
+function bootWarmPilot() {
+  const id = state.catalog[0] && state.catalog[0].id;
+  return id ? ensureModelSession(id) : Promise.resolve();
+}
+
+/* R3: seed the audio layers and toggle pills from localStorage before any
+ * sound can play; the persisted value wins over the default. */
+function applyAudioPrefs() {
+  const prefs = readAudioPrefs();
+  Sound.setEnabled(prefs.music);
+  Sound.setSfxEnabled(prefs.sfx);
+  Sound.setVoicesEnabled(prefs.voices);
+  setTogglePressed("sfx-toggle", prefs.sfx);
+  setTogglePressed("music-toggle", prefs.music);
+  setTogglePressed("voice-toggle", prefs.voices);
+}
+
+function setTogglePressed(id, on) {
+  const el = $(id);
+  if (el) el.setAttribute("aria-pressed", String(!!on));
+}
+
+function saveAudioPrefs() {
+  writeAudioPrefs({ sfx: Sound.isSfxOn(), music: Sound.isOn(), voices: Sound.isVoicesOn() });
+}
+
 function enableCabinet() {
   const start = $("start-game");
   if (start) { start.disabled = false; start.classList.add("ready"); }
@@ -138,6 +183,7 @@ function wireEvents() {
   if (sfxBtn) sfxBtn.addEventListener("click", () => {
     const on = Sound.toggleSfx();
     sfxBtn.setAttribute("aria-pressed", String(on));
+    saveAudioPrefs();
     if (on) Sound.sfx("menu");
   });
 
@@ -145,6 +191,7 @@ function wireEvents() {
   if (musicBtn) musicBtn.addEventListener("click", () => {
     const on = Sound.toggleMusic();
     musicBtn.setAttribute("aria-pressed", String(on));
+    saveAudioPrefs();
     Sound.sfx("menu");
   });
 
@@ -153,16 +200,13 @@ function wireEvents() {
     const on = Sound.toggleVoices();
     if (!on) Commentary.stop();
     voiceBtn.setAttribute("aria-pressed", String(on));
+    saveAudioPrefs();
     Sound.sfx("menu");
   });
 
+  // RESET is the warm boot (R2): works from any screen, not just solo.
   const resetBtn = $("cabinet-reset");
-  if (resetBtn) resetBtn.addEventListener("click", () => {
-    Sound.unlock();
-    Sound.sfx("select");
-    resetAttractDemo();
-    showScreen("attract");
-  });
+  if (resetBtn) resetBtn.addEventListener("click", () => { cabinetReset(); });
 
   const start = $("start-game");
   if (start) start.addEventListener("click", () => {
@@ -172,12 +216,13 @@ function wireEvents() {
   });
 
   // The deck's RESET button is a discrete action (ArrowDown is not a held key
-  // in the game loop), so wire it directly; solo is the only screen that resets.
+  // in the game loop), so wire it directly. On solo it still resets the current
+  // flight; everywhere else it is the same warm-boot RESET as the header.
   const deckReset = $("cabinet-deck") && $("cabinet-deck").querySelector(".arc-btn.reset");
   if (deckReset) deckReset.addEventListener("pointerdown", (event) => {
     event.preventDefault();
-    Sound.unlock();
-    if (state.currentScreenName === "solo") requestSoloReset();
+    if (state.currentScreenName === "solo") { Sound.unlock(); requestSoloReset(); }
+    else cabinetReset();
   });
 
   document.querySelectorAll("[data-screen]").forEach((btn) => {

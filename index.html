@@ -47,6 +47,14 @@
         <main class="cabinet-screen" id="cabinet-screen">
         <p id="cabinet-status" class="sr-status" role="status" aria-live="polite"></p>
 
+        <!-- CRT power-on/off overlay (AIA-46). Purely decorative. -->
+        <div class="crt-fx" id="crt-fx" aria-hidden="true"></div>
+
+        <!-- ========================== POST / EPROM ======================= -->
+        <section id="screen-post" class="screen post-screen" hidden aria-label="System check">
+          <ol class="post-lines" id="post-lines" aria-live="polite"></ol>
+        </section>
+
         <!-- ============================= BOOT ============================= -->
         <section id="screen-boot" class="screen boot-screen" aria-label="Studio logo">
           <div class="boot-lockup">
