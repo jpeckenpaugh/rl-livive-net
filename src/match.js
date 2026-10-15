@@ -10,7 +10,7 @@ import { drawScene, fitPixelCanvas, startConfetti, stopConfetti } from "./render
 import { modelLabel, modelRole, modelEntry, ensureModelSession, chooseModelActions } from "./models.js";
 import { showScreen, setStatus } from "./screens.js";
 import { readPythonJson } from "./python.js";
-import { addLeaderboardEntry, qualifiesHighScore } from "./leaderboard.js";
+import { recordRound, recordWin, renderHighScores } from "./leaderboard.js";
 import { pressed, setupTouchForMatch } from "./input.js";
 
 const multiSims = [];
@@ -139,7 +139,6 @@ function hazardIntroText() {
 export function beginRound() {
   state.match.round += 1;
   state.match.roundSteps = 0;
-  const betweenReel = $("between-reel"); if (betweenReel) betweenReel.hidden = true;
   Commentary.roundStart(state.match.round, state.match.totalRounds);
   state.match.gravity = gravityFor(state.match.hazards);
   const seed = (state.match.seedBase + state.match.round * 2654435761) >>> 0;
@@ -323,7 +322,9 @@ export function finishRound() {
       stats.placements.push(sim.placement);
       if (sim.outcome === "LANDED") stats.lands += 1;
       if (sim.placement === 1) stats.wins += 1;
+      recordRound(sim.pilot.modelId, sim.placement, sim.reward);
     }
+    renderHighScores();
     info = { winnerTeam: null, winnerSlot: ranked[0].pilot.slot, margin: ranked[0].reward - (ranked[1]?.reward || 0), scores: ranked.map((s) => s.reward), cup: true };
   }
   const newLeader = leaderSlot();
@@ -486,7 +487,6 @@ export function continueAfterRound() {
   stopConfetti();
   const cont = $("match-continue"); if (cont) cont.hidden = true;
   showMatchBanner(false);
-  const betweenReel = $("between-reel"); if (betweenReel) betweenReel.hidden = true;
   const matchOver = state.match.teams ? (state.match.roundWins[0] >= 2 || state.match.roundWins[1] >= 2) : state.match.round >= state.match.totalRounds;
   // Next Round starts the next round directly; House Rules only shows up front.
   if (!matchOver) { beginRound(); return; }
@@ -506,13 +506,9 @@ function endMatch() {
   }
   state.match.champion = championSlot;
   const champPilot = state.match.pilots[championSlot];
-  const champStats = state.match.stats[championSlot];
-  if (champPilot && champStats) {
-    addLeaderboardEntry({
-      name: champPilot.name,
-      value: champStats.total,
-      cup: state.match.mode === "cup",
-    });
+  if (champPilot) {
+    recordWin(champPilot.modelId);
+    renderHighScores();
   }
   const humanWon = state.match.humanSlot < 0 ? true : (state.match.teams ? state.match.teams.findIndex((t) => t.includes(state.match.humanSlot)) === (state.match.roundWins[0] >= 2 ? 0 : 1) : championSlot === state.match.humanSlot);
   if (state.match.humanSlot >= 0 && !humanWon) showLose();
@@ -602,11 +598,6 @@ export function openCup(championSlot) {
       return `<tr class="stand-row" style="--pilot-color:${p.color}"><td>${i + 1}</td><td><span class="pilot-chip" style="--pilot-color:${p.color}"></span>P${p.slot + 1} ${escapeHtml(p.name)}</td><td>${st.total.toFixed(0)}</td><td>${st.wins}</td><td>${st.lands}</td><td class="place-cells">${st.placements.map((pl) => `<i class="p${pl}">${pl}</i>`).join("")}</td><td>${src}</td></tr>`;
     }).join("")}</tbody>`;
   }
-  // high-score entry
-  const humanScore = state.match.humanSlot >= 0 ? state.match.stats[state.match.humanSlot].total : null;
-  const entry = $("cup-entry");
-  const qualifies = humanScore != null && qualifiesHighScore(humanScore);
-  if (entry) entry.hidden = !qualifies;
   showScreen("cup");
 }
 export function advanceFromWin() {

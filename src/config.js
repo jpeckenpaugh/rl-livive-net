@@ -11,11 +11,12 @@ export const PANELS = 4;
 export const NATIVE_W = 600;
 export const NATIVE_H = 400;
 export const VIEWPORT_HALF_H = NATIVE_H / SCALE / 2;
-export const LB_KEY = "ll_leaderboards_v1";
+// Per-pilot leaderboards (AIA-53). v2 is keyed by pilot id and starts clean;
+// the old name-keyed v1 data is intentionally not migrated.
+export const LB_KEY = "ll_leaderboards_v2";
 // Persisted audio on/off flags (AIA-46 R3). Fail-soft: a missing or blocked
 // localStorage just falls back to the all-on default.
 export const AUDIO_PREFS_KEY = "ll_audio_v1";
-export const HS_REEL_DWELL_MS = 6000;
 export const ATTRACT_RESTART_DELAY_MS = 1800;
 export const ATTRACT_RETRY_DELAY_MS = 6000;
 export const PLACE_LABELS = ["1st", "2nd", "3rd", "4th"];

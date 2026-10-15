@@ -7,7 +7,7 @@ import { drawScene } from "./render.js";
 import { modelLabel, ensureModelSession, chooseModelActions } from "./models.js";
 import { readPythonJson } from "./python.js";
 import { showScreen } from "./screens.js";
-import { addLeaderboardEntry, boardBest } from "./leaderboard.js";
+import { recordFlight, cabinetHighScore, renderHighScores } from "./leaderboard.js";
 import { pressed } from "./input.js";
 
 export const solo = {
@@ -63,8 +63,7 @@ function resultStatTiles(terminal, flightTime) {
     { label: "FLIGHT TIME", value: flightTime.toFixed(1), unit: "s" },
     { label: "SESSION BEST", value: Math.round(s.bestScore), unit: "pts" },
     { label: "SESSION FLIGHTS", value: s.flights, unit: "" },
-    { label: "CABINET HIGH", value: Math.round(boardBest("records")), unit: "pts" },
-    { label: "BEST TIME", value: boardBest("flights").toFixed(0), unit: "s" },
+    { label: "CABINET HIGH", value: Math.round(cabinetHighScore()), unit: "pts" },
   ];
 }
 function renderResultStats(terminal, flightTime) {
@@ -300,8 +299,8 @@ export async function soloFrame(elapsedMs) {
       solo.accumulator = 0;
       if (terminal.terminated && terminal.reward >= 0) Sound.sfx("land"); else Sound.sfx("crash");
       const flightTime = solo.stepIndex * STEP_INTERVAL_MS / 1000;
-      const pilotName = solo.controllerMode === "human" ? "YOU" : (modelLabel(soloModelId()) || "AI");
-      addLeaderboardEntry({ name: pilotName, value: solo.totalReward, flight: flightTime });
+      recordFlight(soloModelId(), solo.totalReward);
+      renderHighScores();
       recordSoloSession(solo.totalReward, flightTime);
       showSoloResult(terminal, flightTime);
     }

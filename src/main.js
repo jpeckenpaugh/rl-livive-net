@@ -9,7 +9,7 @@ import { showScreen, setStatus, isTitleScreen } from "./screens.js";
 import { Sound, Commentary } from "./audio.js";
 import { fitCabinet, schedulePixelFit, updateConfetti, stopConfetti } from "./render.js";
 import { loadCatalog, ensureModelSession } from "./models.js";
-import { renderHighScores, startHighScoreReel, commitHighScore } from "./leaderboard.js";
+import { renderHighScores } from "./leaderboard.js";
 import { pressed, bindTouch } from "./input.js";
 import {
   enterSolo, renderPilotCards, populateSoloPilots, hideSoloResult, requestSoloReset,
@@ -112,11 +112,10 @@ function buildBootSteps() {
 
 async function bootCatalog() {
   await loadData();
-  renderHighScores();
-  startHighScoreReel();
   initializePanels();
   await loadCatalog();
   await loadCustomModels();
+  renderHighScores();
   renderManual();
   populateSoloPilots();
 }
@@ -258,14 +257,6 @@ function wireEvents() {
 
   const cupContinue = $("cup-continue");
   if (cupContinue) cupContinue.addEventListener("click", () => { Sound.sfx("coin"); resetAttractDemo(); showScreen("attract"); });
-  const cupSave = $("cup-save");
-  if (cupSave) cupSave.addEventListener("click", () => {
-    const input = $("cup-initials");
-    const score = state.match && state.match.humanSlot >= 0 ? state.match.stats[state.match.humanSlot].total : 0;
-    commitHighScore(input ? input.value : "AAA", score, state.match ? state.match.mode : "");
-    Sound.sfx("select");
-    const entry = $("cup-entry"); if (entry) entry.hidden = true;
-  });
 
   const loseRematch = $("lose-rematch");
   if (loseRematch) loseRematch.addEventListener("click", () => { Sound.sfx("select"); rematch(); });
